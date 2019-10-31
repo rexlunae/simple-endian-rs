@@ -23,7 +23,7 @@
 /// 
 
 use std::cmp::Ordering;
-use std::ops::BitAnd;
+use std::ops::{BitAnd, Not};
 
 /// A type with a specific endian.
 pub trait SpecificEndian<T> where Self: Into<T> {
@@ -131,6 +131,13 @@ macro_rules! make_known_endian {
                 }
             }
 
+            impl Not for $be_name {
+                type Output = Self;
+
+                fn not(self) -> Self::Output {
+                    Self::from(!self.to_native())
+                }
+            }
         }
     }
 }
@@ -283,6 +290,12 @@ mod tests {
         let be1 = u64be::from(0x0f0);
         let be2 = u64be::from(0xff0);
         assert_eq!(0x0f0, u64::from(be1 & be2));
+    }
+
+    #[test]
+    fn unary_not_test() {
+        let be1 = u16be::from(0x0f0);
+        assert_eq!(0xff0f, u16::from(!be1));
     }
 
 }
