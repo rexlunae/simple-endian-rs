@@ -25,7 +25,7 @@
 use std::{
     cmp::Ordering,
     ops::{BitAnd, Not},
-    fmt::{Formatter, Result, UpperHex},
+    fmt::{Formatter, Result, UpperHex, Binary},
 };
 
 /// A type with a specific endian.
@@ -150,6 +150,17 @@ macro_rules! make_known_endian {
             impl UpperHex for $le_name {
                 fn fmt(&self, f: &mut Formatter<'_>) -> Result {
                     write!(f, "{:X}", self.to_native()) // delegate to i32's implementation
+                }
+            }
+
+            impl Binary for $be_name {
+                fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                    write!(f, "{:b}", self.to_native()) // delegate to i32's implementation
+                }
+            }
+            impl Binary for $le_name {
+                fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                    write!(f, "{:b}", self.to_native()) // delegate to i32's implementation
                 }
             }
 
