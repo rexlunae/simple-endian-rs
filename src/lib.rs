@@ -78,6 +78,20 @@ macro_rules! make_known_endian {
 
             impl SpecificEndian<$wrap_ty> for $be_name {}
             impl SpecificEndian<$wrap_ty> for $le_name {}
+
+            impl PartialEq for $be_name {
+                fn eq(&self, other: &Self) -> bool {
+                    self.0 == other.0
+                }
+            }
+            impl Eq for $be_name {}
+
+            impl PartialEq for $le_name {
+                fn eq(&self, other: &Self) -> bool {
+                    self.0 == other.0
+                }
+            }
+            impl Eq for $le_name {}
         }
     }
 }
@@ -202,6 +216,20 @@ mod tests {
     fn convert_to_native() {
         let be = u64be::from(12345);
         assert_eq!(12345, be.to_native());
+    }
+
+    #[test]
+    fn equality_test() {
+        let be1 = u64be::from(12345);
+        let be2 = u64be::from(12345);
+        assert_eq!(true, be1 == be2);
+    }
+
+    #[test]
+    fn not_equality_test() {
+        let be1 = u64be::from(12345);
+        let be2 = u64be::from(34565);
+        assert_eq!(true, be1 != be2);
     }
 
 }
