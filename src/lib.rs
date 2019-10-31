@@ -41,10 +41,10 @@ macro_rules! make_known_endian {
         mod $mod_name {
             use super::*;
 
-            #[derive(Clone, Copy)]
+            #[derive(Clone, Copy, Hash)]
             #[allow(non_camel_case_types)]
             pub struct $be_name ($wrap_ty);
-            #[derive(Clone, Copy)]
+            #[derive(Clone, Copy, Hash)]
             #[allow(non_camel_case_types)]
             pub struct $le_name ($wrap_ty);
 
