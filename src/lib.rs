@@ -22,8 +22,11 @@
 /// Trying to write `bp.a = new_a;` causes an error because the type u64 can't be directly stored.
 /// 
 
-use std::cmp::Ordering;
-use std::ops::{BitAnd, Not};
+use std::{
+    cmp::Ordering,
+    ops::{BitAnd, Not},
+    fmt::{Formatter, Result, UpperHex},
+};
 
 /// A type with a specific endian.
 pub trait SpecificEndian<T> where Self: Into<T> {
@@ -138,6 +141,18 @@ macro_rules! make_known_endian {
                     Self::from(!self.to_native())
                 }
             }
+
+            impl UpperHex for $be_name {
+                fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                    write!(f, "{:X}", self.to_native()) // delegate to i32's implementation
+                }
+            }
+            impl UpperHex for $le_name {
+                fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                    write!(f, "{:X}", self.to_native()) // delegate to i32's implementation
+                }
+            }
+
         }
     }
 }
