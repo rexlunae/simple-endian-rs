@@ -142,6 +142,14 @@ macro_rules! make_known_endian {
                 }
             }
 
+            impl Not for $le_name {
+                type Output = Self;
+
+                fn not(self) -> Self::Output {
+                    Self::from(!self.to_native())
+                }
+            }
+
             impl UpperHex for $be_name {
                 fn fmt(&self, f: &mut Formatter<'_>) -> Result {
                     write!(f, "{:X}", self.to_native()) // delegate to i32's implementation
@@ -305,7 +313,7 @@ mod tests {
     }
 
     #[test]
-    fn gt_test() {
+    fn lt_test() {
         let be1 = u64be::from(12345);
         let be2 = u64be::from(34565);
         assert_eq!(true, be1 < be2);
