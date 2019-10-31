@@ -22,6 +22,8 @@
 /// Trying to write `bp.a = new_a;` causes an error because the type u64 can't be directly stored.
 /// 
 
+use std::cmp::Ordering;
+
 /// A type with a specific endian.
 pub trait SpecificEndian<T> where Self: Into<T> {
     fn to_native(self) -> T {
@@ -92,6 +94,29 @@ macro_rules! make_known_endian {
                 }
             }
             impl Eq for $le_name {}
+
+            impl Ord for $be_name {
+                fn cmp(&self, other: &Self) -> Ordering {
+                    self.to_native().cmp(&other.to_native())
+                }
+            }
+            impl PartialOrd for $be_name {
+                fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                    Some(self.cmp(other))
+                }
+            }
+
+            impl Ord for $le_name {
+                fn cmp(&self, other: &Self) -> Ordering {
+                    self.to_native().cmp(&other.to_native())
+                }
+            }
+            impl PartialOrd for $le_name {
+                fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                    Some(self.cmp(other))
+                }
+            }
+
         }
     }
 }
@@ -230,6 +255,13 @@ mod tests {
         let be1 = u64be::from(12345);
         let be2 = u64be::from(34565);
         assert_eq!(true, be1 != be2);
+    }
+
+    #[test]
+    fn gt_test() {
+        let be1 = u64be::from(12345);
+        let be2 = u64be::from(34565);
+        assert_eq!(true, be1 < be2);
     }
 
 }
