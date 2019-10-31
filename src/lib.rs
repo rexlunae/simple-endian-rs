@@ -38,7 +38,7 @@ pub trait SpecificEndian<T> where Self: Into<T> {
 /// Generates a type with big and little endian variants.  Usually, this will be internal.
 macro_rules! make_known_endian {
     ($wrap_ty:ty, $mod_name:ident, $be_name:ident, $le_name:ident) => {
-        mod $mod_name {
+        pub mod $mod_name {
             use super::*;
 
             #[derive(Clone, Copy, Hash)]
