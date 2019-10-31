@@ -23,6 +23,7 @@
 /// 
 
 use std::cmp::Ordering;
+use std::ops::BitAnd;
 
 /// A type with a specific endian.
 pub trait SpecificEndian<T> where Self: Into<T> {
@@ -114,6 +115,19 @@ macro_rules! make_known_endian {
             impl PartialOrd for $le_name {
                 fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
                     Some(self.cmp(other))
+                }
+            }
+
+            impl BitAnd for $be_name {
+                type Output = Self;
+                fn bitand(self, rhs: Self) -> Self::Output {
+                    Self(self.0 & rhs.0)
+                }
+            }
+            impl BitAnd for $le_name {
+                type Output = Self;
+                fn bitand(self, rhs: Self) -> Self::Output {
+                    Self(self.0 & rhs.0)
                 }
             }
 
@@ -262,6 +276,13 @@ mod tests {
         let be1 = u64be::from(12345);
         let be2 = u64be::from(34565);
         assert_eq!(true, be1 < be2);
+    }
+
+    #[test]
+    fn bit_and_test() {
+        let be1 = u64be::from(0x0f0);
+        let be2 = u64be::from(0xff0);
+        assert_eq!(0x0f0, u64::from(be1 & be2));
     }
 
 }
