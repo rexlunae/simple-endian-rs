@@ -24,8 +24,8 @@
 
 use std::{
     cmp::Ordering,
-    ops::{BitAnd, Not},
-    fmt::{Formatter, Result, UpperHex, Binary},
+    ops::{BitAnd, Not, AddAssign, BitAndAssign, BitXor, BitXorAssign, BitOr, BitOrAssign},
+    fmt::{Formatter, Result, UpperHex, LowerHex, Octal, Binary},
 };
 
 /// A type with a specific endian.
@@ -134,6 +134,85 @@ macro_rules! make_known_endian {
                 }
             }
 
+            impl BitAndAssign for $be_name {
+               fn bitand_assign(&mut self, rhs: Self) {
+                    *self = *self & rhs
+                }
+            }
+            impl BitAndAssign for $le_name {
+               fn bitand_assign(&mut self, rhs: Self) {
+                    *self = *self & rhs
+                }
+            }
+
+            impl BitXor for $be_name {
+                // We don't need to convert endian for this op.
+                type Output = Self;
+
+                fn bitxor(self, rhs: Self) -> Self::Output {
+                    Self(self.0 ^ rhs.0)
+                }
+            }
+
+            impl BitXor for $le_name {
+                // We don't need to convert endian for this op.
+                type Output = Self;
+
+                fn bitxor(self, rhs: Self) -> Self::Output {
+                    Self(self.0 ^ rhs.0)
+                }
+            }
+
+            impl BitXorAssign for $be_name {
+                fn bitxor_assign(&mut self, rhs: Self) {
+                    *self = *self ^ rhs
+                }
+            }
+            impl BitXorAssign for $le_name {
+                fn bitxor_assign(&mut self, rhs: Self) {
+                    *self = *self ^ rhs
+                }
+            }
+
+            impl BitOr for $be_name {
+                type Output = Self;
+
+                fn bitor(self, rhs: Self) -> Self {
+                    Self(self.0 | rhs.0)
+                }
+            }
+
+            impl BitOr for $le_name {
+                type Output = Self;
+
+                fn bitor(self, rhs: Self) -> Self {
+                    Self(self.0 | rhs.0)
+                }
+            }
+
+            impl BitOrAssign for $be_name {
+                fn bitor_assign(&mut self, rhs: Self) {
+                    *self = *self | rhs;
+                }
+            }
+
+            impl BitOrAssign for $le_name {
+                fn bitor_assign(&mut self, rhs: Self) {
+                    *self = *self | rhs;
+                }
+            }
+
+            impl AddAssign for $be_name {
+                fn add_assign(&mut self, other: Self) {
+                    *self = Self::from(self.to_native() + other.to_native());
+                }
+            }
+            impl AddAssign for $le_name {
+                fn add_assign(&mut self, other: Self) {
+                    *self = Self::from(self.to_native() + other.to_native());
+                }
+            }
+
             impl Not for $be_name {
                 type Output = Self;
 
@@ -158,6 +237,28 @@ macro_rules! make_known_endian {
             impl UpperHex for $le_name {
                 fn fmt(&self, f: &mut Formatter<'_>) -> Result {
                     write!(f, "{:X}", self.to_native()) // delegate to i32's implementation
+                }
+            }
+
+            impl LowerHex for $be_name {
+                fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                    write!(f, "{:x}", self.to_native()) // delegate to i32's implementation
+                }
+            }
+            impl LowerHex for $le_name {
+                fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                    write!(f, "{:x}", self.to_native()) // delegate to i32's implementation
+                }
+            }
+
+            impl Octal for $be_name {
+                fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                    write!(f, "{:o}", self.to_native()) // delegate to i32's implementation
+                }
+            }
+            impl Octal for $le_name {
+                fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                    write!(f, "{:o}", self.to_native()) // delegate to i32's implementation
                 }
             }
 
