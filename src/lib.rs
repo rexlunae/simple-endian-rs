@@ -5,20 +5,20 @@
 ///  
 /// # Example 1:
 /// 
-///```
+///```rust
 /// use simple_endian::*;
-/// 
-///    fn init() {
-///        struct BinPacket {
-///            a: u64be,
-///            b: u32be,
-///        }
-///        let mut bp = BinPacket{a: 0xfe.into(), b: 10.into()};
-///        let new_a = bp.a.to_native() * 1234; 
+///
+/// fn init() {
+///     struct BinPacket {
+///         a: u64be,
+///         b: u32be,
+///     }
+///     let mut bp = BinPacket{a: 0xfe.into(), b: 10.into()};
+///     let new_a = bp.a.to_native() * 1234; 
  
-///        bp.a = new_a.into();
-///        bp.b = 1234.into();
-///    }
+///     bp.a = new_a.into();
+///     bp.b = 1234.into();
+/// }
 /// ```
 /// 
 /// Trying to write `bp.a = new_a;` causes an error because the type u64 can't be directly stored.
