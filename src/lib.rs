@@ -5,6 +5,7 @@
 ///  
 /// # Example 1:
 /// 
+///```
 /// use simple_endian::*;
 /// 
 ///    fn init() {
@@ -18,6 +19,7 @@
 ///        bp.a = new_a.into();
 ///        bp.b = 1234.into();
 ///    }
+/// ```
 /// 
 /// Trying to write `bp.a = new_a;` causes an error because the type u64 can't be directly stored.
 /// 
@@ -25,7 +27,7 @@
 use std::{
     cmp::Ordering,
     ops::{BitAnd, Not, AddAssign, BitAndAssign, BitXor, BitXorAssign, BitOr, BitOrAssign},
-    fmt::{Formatter, Result, UpperHex, LowerHex, Octal, Binary},
+    fmt::{Formatter, Result, UpperHex, LowerHex, Octal, Binary, Display},
 };
 
 /// A trait that allows endian conversions.  Any type that wants to use this crate to do endian conversions should implement this trait.
@@ -119,7 +121,7 @@ make_specific_endian_float!(f32);
 make_specific_endian_float!(f64);
 
 /// A big-endian struct that basically just uses the type system to tag the endianness.
-#[derive(Copy, Clone, Hash)]
+#[derive(Copy, Clone, Hash, Debug)]
 pub struct BigEndian<T: SpecificEndian<T>> (T);
 
 impl<T> BigEndian<T> where T: SpecificEndian<T> {
@@ -343,7 +345,7 @@ make_primitive_type_from_be!(f32);
 make_primitive_type_from_be!(f64);
 
 /// A little-endian struct that basically just uses the type system to tag the endianness.
-#[derive(Copy, Clone, Hash)]
+#[derive(Copy, Clone, Hash, Debug)]
 pub struct LittleEndian<T: SpecificEndian<T>> (T);
 
 impl<T> LittleEndian<T> where T: SpecificEndian<T> {
@@ -441,6 +443,18 @@ impl<T: Binary + SpecificEndian<T>> Binary for BigEndian<T> {
 impl<T: Binary + SpecificEndian<T>> Binary for LittleEndian<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(f, "{:b}", self.to_native()) // delegate to i32's implementation
+    }
+}
+
+impl<T: Display + SpecificEndian<T>> Display for BigEndian<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{}", self.to_native()) // delegate to i32's implementation
+    }
+}
+
+impl<T: Display + SpecificEndian<T>> Display for LittleEndian<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{}", self.to_native()) // delegate to i32's implementation
     }
 }
 
@@ -654,6 +668,19 @@ mod tests {
         let be1 = BigEndian::<f64>::from(1234.5678);
         let be2 = BigEndian::<f64>::from(6234.5678);
         assert_eq!(true, be1 < be2);
+
+        #[derive(Debug)]
+        struct NetworkConfig {
+            address: BigEndian<u32>,
+            mask: BigEndian<u32>,
+            network: BigEndian<u32>,
+        }
+        
+        let config = NetworkConfig{address: 0x0a00000a.into(), mask: 0xff000000.into(), network: (0x0a00000a & 0xff000000).into()};
+        
+        println!("value: {:x?}", config);
+        
+
     }
 
 }
