@@ -123,6 +123,9 @@ make_specific_endian_float!(f64);
 /// A big-endian struct that basically just uses the type system to tag the endianness.
 #[derive(Copy, Clone, Hash, Debug)]
 pub struct BigEndian<T: SpecificEndian<T>> (T);
+unsafe impl<T: Send + SpecificEndian<T>> Send for BigEndian<T> {}
+unsafe impl<T: Sync + SpecificEndian<T>> Sync for BigEndian<T> {}
+
 
 impl<T> BigEndian<T> where T: SpecificEndian<T> {
     pub fn store(&mut self, v: &T) {
@@ -347,6 +350,8 @@ make_primitive_type_from_be!(f64);
 /// A little-endian struct that basically just uses the type system to tag the endianness.
 #[derive(Copy, Clone, Hash, Debug)]
 pub struct LittleEndian<T: SpecificEndian<T>> (T);
+unsafe impl<T: Send + SpecificEndian<T>> Send for LittleEndian<T> {}
+unsafe impl<T: Sync + SpecificEndian<T>> Sync for LittleEndian<T> {}
 
 impl<T> LittleEndian<T> where T: SpecificEndian<T> {
     pub fn store(&mut self, v: &T) {
