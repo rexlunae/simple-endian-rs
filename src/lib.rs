@@ -26,7 +26,7 @@
 
 use std::{
     cmp::Ordering,
-    ops::{BitAnd, Not, Add, AddAssign, Sub, SubAssign, BitAndAssign, BitXor, BitXorAssign, BitOr, BitOrAssign},
+    ops::{BitAnd, Not, Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign, BitAndAssign, BitXor, BitXorAssign, BitOr, BitOrAssign},
     fmt::{Formatter, Result, UpperHex, LowerHex, Octal, Binary, Display},
 };
 
@@ -290,6 +290,34 @@ macro_rules! add_math_ops {
         impl AddAssign for $wrap_ty {
             fn add_assign(&mut self, other: Self) {
                 *self = *self + other;
+            }
+        }
+
+        impl Mul for $wrap_ty {
+            type Output = Self;
+
+            fn mul(self, other: Self) -> Self {
+                Self::from(self.to_native() * other.to_native())
+            }
+        }
+
+        impl MulAssign for $wrap_ty {
+            fn mul_assign(&mut self, other: Self) {
+                *self = *self * other;
+            }
+        }
+
+        impl Div for $wrap_ty {
+            type Output = Self;
+
+            fn div(self, other: Self) -> Self {
+                Self::from(self.to_native() / other.to_native())
+            }
+        }
+
+        impl DivAssign for $wrap_ty {
+            fn div_assign(&mut self, other: Self) {
+                *self = *self / other;
             }
         }
 
@@ -712,6 +740,29 @@ mod tests {
         be1 -= 1.0.into();
         assert_eq!(be1, 1232.5678.into());
     }
+
+    #[test]
+    fn mul_fp_be() {
+        let mut be1 = f64be::from(1234.5678);
+        be1 = be1 * 10.0.into();
+        be1 *= 10.0.into();
+        assert_eq!(be1, 123456.78.into());
+    }
+
+    #[test]
+    fn div_fp_be() {
+        let mut ne1: f64 = 1234.5678;
+        let mut be1 = f64be::from(ne1);
+        println!("{}, {}", be1, ne1);
+        be1 = be1 / 10.0.into();
+        ne1 = ne1 / 10.0;
+        println!("{}, {}", be1, ne1);
+        be1 /= 10.0.into();
+        ne1 /= 10.0;
+        println!("{}, {}", be1, ne1);
+        assert_eq!(ne1, be1.into());
+    }
+
 
     #[test]
     fn custom_type() {
