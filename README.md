@@ -58,16 +58,16 @@ foo = 7;     // Will not compile without .into().
 
 ## Diving in deeper
 
-At its core, this crate centers around one trait, called SpecificEndian.  SpecificEndian is required to make BigEndian<T> and LittleEndian<T> structs.  Any struct that implements SpecificEndian, even if it handles endianness in unusual ways, can be assigned BigEndian and LittleEndian variants using the structs in this crate.  In fact, u64be is just a type alias for BigEndian<u64>.
+At its core, this crate centers around one trait, called SpecificEndian<T>, and the generic structs BigEndian<T> and LittleEndian<T>.  SpecificEndian<T> is required to make BigEndian<T> and LittleEndian<T> structs.  Any struct that implements SpecificEndian, even if it handles endianness in unusual ways, can be assigned BigEndian and LittleEndian variants using the structs in this crate.  In fact, u64be is just a type alias for BigEndian<u64>.  There is no memory footprint added by the BigEndian<T> and LittleEndian<T> structs, in fact, in most cases it uses the type T to store the data.  The only purpose of the structs is to tag them for Rust's type system to enforce correct accesses.  This means that it can be used directly within larger structs, and then the entire struct can be written to disk, send over a network socket, and otherwise shared between processor architectures using the same code regardless of host endian without any conditional logic.
 
 The crate provides SpecificEndian for most of the built-in types in Rust, including:
 * Single-byte values (i8, u8, bool), although this really doesn't do much but provide completeness.
-* The integers: u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize
+* The multi-byte integers: u16, u32, u64, u128, usize, i16, i32, i64, i128, isize
 * The floats: f32, f64.
 
 At the time of this writing, the only type that doesn't have an implementation is char, and this is because some values of char that would be possible from the binary representation would cause a panic.  Usually, you wouldn't want to store a char directly anyway, so this is probably a small limitation.
 
-This crate also provides implementations of a variety of useful traits for the types that it wraps.  This allows some amount of logic to be performed without byte-swapping overhead.
+This crate also provides implementations of a variety of useful traits for the types that it wraps, including boolean logic implementations for the integer types.  This allows some amount of logic to be performed directly without byte-swapping overhead.
 
 ```Rust
 use simple_endian::*;
