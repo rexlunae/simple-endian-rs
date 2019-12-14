@@ -14,9 +14,9 @@ byteorder has over 11 million downloads, and is clearly the prevailing way to ha
 
 ## So, why create another one?
 
-Because I think a better approach is to define your endianness as part of your data definition rather than in the logic of your program, and then to make byte order swaps as transparent as possible while still ensuring correctness.
+Because I think a better approach is to define your endianness as part of your data definition rather than in the logic of your program, and then to make byte order swaps as transparent as possible while still ensuring correctness.  And because the more like normal Rust data types and operations this is, the more likely it is that people will write portable code and data structures in the first place.
 
-The philosophy of this crate is that you define your endian when you write your data structures, and then you use clear, imperative logic to mutate it without needing to think about the details.
+The philosophy of this crate is that you define your endian when you write your data structures, and then you use clear, imperative logic to mutate it without needing to think about the details or the host endian.  This makes it fundamentally different from crates that just give you a way to read a &[u8; 8] into a u64.
 
 ```Rust
 use simple_endian::*;
