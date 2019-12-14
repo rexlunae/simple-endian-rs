@@ -1,6 +1,6 @@
 # simple-endian
 
-Yet another library for handling endian in Rust.
+Yet another library for handling endian in Rust.  We use Rust's type system to ensure correct conversions and build data types with explicit endianness defined for more seamless portability of data structures between processor types.
 
 ## Isn't there already a library for this?
 
@@ -10,7 +10,7 @@ Yes, there are several.  But I'm not entirely happy with any of them.  Specifica
 * https://crates.io/crates/byteorder
 * https://crates.io/crates/bswap
 
-byteorder has over 11 million downloads, and is clearly the prevailing way to handle endian in Rust.  However, it relies on programmers writing specific logic to swap bytes and requires accessing memory in ways that are unlike normal patterns for Rust.  But there's really very little difference between a native endian type and a foreign endian one in terms of how it is stored in memory.
+byteorder has over 11 million downloads, and is clearly the prevailing way to handle endian in Rust.  However, it relies on programmers writing specific logic to swap bytes and requires accessing memory in ways that are unlike normal patterns for Rust.  But really, the only difference between a big- and little-endian value is the interpretation.  It shouldn't require a drastically different pattern of code to access them.
 
 ## So, why create another one?
 
@@ -26,7 +26,7 @@ let foo: u64be = 4.into();
 println!("raw: {:x}, value: {:x}", foo.raw(), foo);
 ```
 
-The output will depend on what sort of computer you're using.  If you're running a little-endian system, such as x86 (PCs, Macs, etc.), you will see the raw in big endian representation, as it's stored in memory.
+The output will depend on what sort of computer you're using.  If you're running a little-endian system, such as x86 (PCs, Macs, etc.), you will see the raw in big endian representation, as it's stored in memory.  Note that the raw method is mostly there for debugging purposes, and should not be used often.
 
 This works in reverse as well:
 ```Rust
@@ -47,6 +47,15 @@ let bar = foo.to_native();
 
 println!("value: {:x}", bar);
 ```
+
+And the type system ensures that native-endian values are never written without being converted into the proper endian.
+
+```Rust
+let mut foo: u64be = 4.into();
+foo = 7;     // Will not compile without .into().
+```
+
+
 ## Diving in deeper
 
 At its core, this crate centers around one trait, called SpecificEndian.  SpecificEndian is required to make BigEndian<T> and LittleEndian<T> structs.  Any struct that implements SpecificEndian, even if it handles endianness in unusual ways, can be assigned BigEndian and LittleEndian variants using the structs in this crate.  In fact, u64be is just a type alias for BigEndian<u64>.

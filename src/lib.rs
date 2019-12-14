@@ -30,7 +30,7 @@ use std::{
     fmt::{Formatter, Result, UpperHex, LowerHex, Octal, Binary, Display},
 };
 
-/// A trait that allows endian conversions.  Any type that wants to use this crate to do endian conversions should implement this trait.
+/// A trait that allows endian conversions.  Any type that wants to use this crate to do endian conversions must implement this trait.
 pub trait SpecificEndian<T> where Self: Into<T> + Clone + Copy {
     fn to_big_endian(&self) -> T;
     fn to_little_endian(&self) -> T;
@@ -673,19 +673,50 @@ mod tests {
         let be1 = BigEndian::<f64>::from(1234.5678);
         let be2 = BigEndian::<f64>::from(6234.5678);
         assert_eq!(true, be1 < be2);
+    }
 
-        #[derive(Debug)]
-        struct NetworkConfig {
-            address: BigEndian<u32>,
-            mask: BigEndian<u32>,
-            network: BigEndian<u32>,
+    #[test]
+    fn custom_type() {
+        #[derive(Copy, Clone, Debug)]
+        enum EndianAwareExample {
+            BigEndianFunction(u64),
+            LittleEndianFunction(u64),
         }
-        
-        let config = NetworkConfig{address: 0x0a00000a.into(), mask: 0xff000000.into(), network: (0x0a00000a & 0xff000000).into()};
-        
-        println!("value: {:x?}", config);
-        
+        impl SpecificEndian<EndianAwareExample> for EndianAwareExample {
+            fn to_big_endian(&self) -> Self {
+                match self {
+                    EndianAwareExample::BigEndianFunction(_v) => *self,
+                    EndianAwareExample::LittleEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_big_endian()),
+                }
+            }
+            fn to_little_endian(&self) -> Self {
+                match self {
+                    EndianAwareExample::LittleEndianFunction(_v) => *self,
+                    EndianAwareExample::BigEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_little_endian()),
+                }
+            }
+            fn from_big_endian(&self) -> Self {
+                match self {
+                    EndianAwareExample::BigEndianFunction(_v) => *self,
+                    EndianAwareExample::LittleEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_big_endian()),
+                }
+            }
+            fn from_little_endian(&self) -> Self {
+                match self {
+                    EndianAwareExample::LittleEndianFunction(_v) => *self,
+                    EndianAwareExample::BigEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_little_endian()),
+                }
+            }
 
+        }
+        let foo: BigEndian<EndianAwareExample> = EndianAwareExample::LittleEndianFunction(0xf0).into();
+        #[allow(unused_assignments)]
+        let mut value = 0;
+        match foo.to_native() {
+            EndianAwareExample::BigEndianFunction(v) => { println!("be: {:x}", v); value = v }
+            EndianAwareExample::LittleEndianFunction(v) => { println!("le: {:x}", v); value = 0 }
+        }
+        assert_eq!(value, 0x0f000000000000000);
     }
 
 }
