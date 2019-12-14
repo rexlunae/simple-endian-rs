@@ -26,7 +26,7 @@
 
 use std::{
     cmp::Ordering,
-    ops::{BitAnd, Not, AddAssign, BitAndAssign, BitXor, BitXorAssign, BitOr, BitOrAssign},
+    ops::{BitAnd, Not, Add, AddAssign, Sub, SubAssign, BitAndAssign, BitXor, BitXorAssign, BitOr, BitOrAssign},
     fmt::{Formatter, Result, UpperHex, LowerHex, Octal, Binary, Display},
 };
 
@@ -279,11 +279,33 @@ add_bitwise_ops!(LittleEndian<isize>);
 
 macro_rules! add_math_ops {
     ($wrap_ty:ty) => {
-            impl AddAssign for $wrap_ty {
-                fn add_assign(&mut self, other: Self) {
-                    *self = Self::from(self.to_native() + other.to_native());
-                }
+        impl Add for $wrap_ty {
+            type Output = Self;
+
+            fn add(self, other: Self) -> Self {
+                Self::from(self.to_native() + other.to_native())
             }
+        }
+
+        impl AddAssign for $wrap_ty {
+            fn add_assign(&mut self, other: Self) {
+                *self = *self + other;
+            }
+        }
+
+        impl Sub for $wrap_ty {
+            type Output = Self;
+
+            fn sub(self, other: Self) -> Self {
+                Self::from(self.to_native() - other.to_native())
+            }
+        }
+        impl SubAssign for $wrap_ty {
+            fn sub_assign(&mut self, other: Self) {
+                *self = *self - other;
+            }
+        }
+
     }
 }
 
@@ -673,6 +695,22 @@ mod tests {
         let be1 = BigEndian::<f64>::from(1234.5678);
         let be2 = BigEndian::<f64>::from(6234.5678);
         assert_eq!(true, be1 < be2);
+    }
+
+    #[test]
+    fn add_fp_be() {
+        let mut be1 = f64be::from(1234.5678);
+        be1 = be1 + 1.0.into();
+        be1 += 1.0.into();
+        assert_eq!(be1, 1236.5678.into());
+    }
+
+    #[test]
+    fn subtract_fp_be() {
+        let mut be1 = f64be::from(1234.5678);
+        be1 = be1 - 1.0.into();
+        be1 -= 1.0.into();
+        assert_eq!(be1, 1232.5678.into());
     }
 
     #[test]
