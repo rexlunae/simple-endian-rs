@@ -3,8 +3,11 @@ name = "simple_endian"
 version = "0.1.1"
 authors = ["Rex Lunae <rexlunae@gmail.com>"]
 edition = "2018"
-license = "MIT OR Apache-2.0"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT"
+description = "A create for defining endianness within your data structures, to make handling portable data structures simpler."
+repository = "https://github.com/rexlunae/simple-endian-rs"
+keywords = ["endian", "byteorder", "big endian", "little endian"]
+documentation = "https://github.com/rexlunae/simple-endian-rs/blob/master/README.md"
+homepage = "https://github.com/rexlunae/simple-endian-rs"
 
 [dependencies]
