@@ -128,9 +128,6 @@ unsafe impl<T: Sync + SpecificEndian<T>> Sync for BigEndian<T> {}
 
 
 impl<T> BigEndian<T> where T: SpecificEndian<T> {
-    pub fn store(&mut self, v: &T) {
-        self.0 = v.to_big_endian();
-    }
     pub fn raw(&self) -> T {
         self.0
     }
@@ -460,9 +457,6 @@ unsafe impl<T: Send + SpecificEndian<T>> Send for LittleEndian<T> {}
 unsafe impl<T: Sync + SpecificEndian<T>> Sync for LittleEndian<T> {}
 
 impl<T> LittleEndian<T> where T: SpecificEndian<T> {
-    pub fn store(&mut self, v: &T) {
-        self.0 = v.to_little_endian();
-    }
     pub fn raw(&self) -> T {
         self.0
     }
