@@ -243,7 +243,7 @@ macro_rules! add_bitwise_ops {
             type Output = Self;
 
             fn not(self) -> Self::Output {
-                Self::from(!self.to_native())
+                Self(!self.0)
             }
         }        
     }
@@ -836,6 +836,14 @@ mod tests {
         be1 >>= 5.into();
         ne1 >>= 5;
         assert_eq!(ne1, be1.into());
+    }
+
+    #[test]
+    fn inferred_type() {
+        let mut be1: u32be = BigEndian(1234);
+        be1 &= BigEndian(5678);
+        println!("{} {} {}", be1, be1.raw(), be1.to_native());
+        assert_eq!(be1, 33816576.into());
     }
 
 
