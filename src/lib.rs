@@ -848,6 +848,14 @@ mod tests {
         assert_eq!(be1, 6912.6.into());
     }
 
+    #[test]
+    fn inferred_type_bigger() {
+        let mut be1 = BigEndian::from(0x0feeddcc);
+        be1 &= BigEndian::from(0xff00);
+        println!("{} {} {}", be1, be1.raw(), be1.to_native());
+        assert_eq!(be1, 0xdd00.into());
+    }
+
 
     #[test]
     fn custom_type() {
