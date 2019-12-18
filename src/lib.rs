@@ -834,10 +834,10 @@ mod tests {
 
     #[test]
     fn inferred_type() {
-        let mut be1: u32be = BigEndian(1234);
-        be1 &= BigEndian(5678);
+        let mut be1: u32be = BigEndian::from(1234);
+        be1 &= BigEndian::from(5678);
         println!("{} {} {}", be1, be1.raw(), be1.to_native());
-        assert_eq!(be1, 33816576.into());
+        assert_eq!(be1, 1026.into());
     }
 
 
