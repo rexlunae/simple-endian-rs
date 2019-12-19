@@ -1,3 +1,4 @@
+#![feature(test)]
 /// Many byte-order-handling libraries focus on providing code to convert to and from big- or little-endian.  However,
 /// this requires users of those libraries to use a lot of explicit logic.  This library uses the Rust type system to
 /// enforce conversions invisibly, and also ensure that they are done consistently.  A struct member can be read and written
@@ -615,7 +616,9 @@ pub type f64be = BigEndian<f64>;
 
 #[cfg(test)]
 mod tests {
+    extern crate test;
     use super::*;
+    use test::Bencher;
 
     #[test]
     fn declare_all() {
@@ -694,7 +697,6 @@ mod tests {
             assert_eq!(le.raw(), 0xfe);
         }
     }
-
 
     #[test]
     fn cast() {
@@ -856,7 +858,83 @@ mod tests {
         assert_eq!(be1, 0xdd00.into());
     }
 
+    #[bench]
+    fn bench_integer_be(b: &mut Bencher) {
+        b.iter(|| {
+            let mut a = BigEndian::from(1234567890);
+            for _ in 0..10 {
+                a += BigEndian::from(101010);
+                a &= BigEndian::from(0xf0f0f0);
+                a *= BigEndian::from(123);
+                a /= BigEndian::from(543);
+                println!("{}", a);
+            }
+        });
+    }
+    #[bench]
+    fn bench_integer_le(b: &mut Bencher) {
+        b.iter(|| {
+            let mut a = LittleEndian::from(1234567890);
+            for _ in 0..10 {
+                a += LittleEndian::from(101010);
+                a &= LittleEndian::from(0xf0f0f0);
+                a *= LittleEndian::from(123);
+                a /= LittleEndian::from(543);
+                println!("{}", a);
+            }
+        });
+    }
+    #[bench]
+    fn bench_integer_ne(b: &mut Bencher) {
+        b.iter(|| {
+            let mut a = 1234567890;
+            for _ in 0..10 {
+                a += 101010;
+                a &= 0xf0f0f0;
+                a *= 123;
+                a /= 543;
+                println!("{}", a);
+            }
+        });
+    }
 
+    #[bench]
+    fn bench_fp_be(b: &mut Bencher) {
+        b.iter(|| {
+            let mut a = BigEndian::from(1234567890.1);
+            for _ in 0..10 {
+                a += BigEndian::from(101010.0);
+                a *= BigEndian::from(123.0);
+                a /= BigEndian::from(543.0);
+                println!("{}", a);
+            }
+        });
+    }
+    #[bench]
+    fn bench_fp_le(b: &mut Bencher) {
+        b.iter(|| {
+            let mut a = LittleEndian::from(1234567890.1);
+            for _ in 0..10 {
+                a += LittleEndian::from(101010.0);
+                a *= LittleEndian::from(123.0);
+                a /= LittleEndian::from(543.0);
+                println!("{}", a);
+            }
+        });
+    }
+    #[bench]
+    fn bench_fp_ne(b: &mut Bencher) {
+        b.iter(|| {
+            let mut a = 1234567890.1;
+            for _ in 0..10 {
+                a += 101010.0;
+                a *= 123.0;
+                a /= 543.0;
+                println!("{}", a);
+            }
+        });
+    }
+    
     #[test]
     fn custom_type() {
         #[derive(Copy, Clone, Debug)]
