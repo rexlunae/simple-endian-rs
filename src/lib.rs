@@ -135,7 +135,6 @@ impl<T> BigEndian<T> where T: SpecificEndian<T> {
     pub fn from_bits(v: T) -> Self {
         Self{_v: v}
     }
-
     pub fn to_native(&self) -> T {
         T::from_big_endian(&self._v)
     }
@@ -945,6 +944,43 @@ mod tests {
                 a *= 123.0;
                 a /= 543.0;
                 println!("{}", a);
+            }
+        });
+    }
+
+    #[bench]
+    fn base_endian_test_be(b: &mut Bencher) {
+        b.iter(|| {
+            for _ in 0..1000 {
+               let a = i32::from_be(0xa5a5a5);
+               println!("{}", a);
+            }
+        });
+    }
+    #[bench]
+    fn base_endian_test_le(b: &mut Bencher) {
+        b.iter(|| {
+            for _ in 0..1000 {
+               let a = i32::from_le(0xa5a5a5);
+               println!("{}", a);
+            }
+        });
+    }
+    #[bench]
+    fn base_endian_test_ne(b: &mut Bencher) {
+        b.iter(|| {
+            for _ in 0..1000 {
+               let a = 0xa5a5a5_i32;
+               println!("{}", a);
+            }
+        });
+    }
+    #[bench]
+    fn base_endian_test_structured(b: &mut Bencher) {
+        b.iter(|| {
+            for _ in 0..1000 {
+               let a = LittleEndian{_v: 0xa5a5a5_i32};
+               println!("{}", a);
             }
         });
     }
