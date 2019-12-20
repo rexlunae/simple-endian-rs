@@ -123,27 +123,27 @@ make_specific_endian_float!(f64);
 
 /// A big-endian struct that basically just uses the type system to tag the endianness.
 #[derive(Copy, Clone, Hash, Debug)]
-pub struct BigEndian<T: SpecificEndian<T>> (T);
+pub struct BigEndian<T: SpecificEndian<T>> {_v: T}
 unsafe impl<T: Send + SpecificEndian<T>> Send for BigEndian<T> {}
 unsafe impl<T: Sync + SpecificEndian<T>> Sync for BigEndian<T> {}
 
 
 impl<T> BigEndian<T> where T: SpecificEndian<T> {
     pub fn to_bits(&self) -> T {
-        self.0
+        self._v
     }
     pub fn from_bits(v: T) -> Self {
-        Self(v)
+        Self{_v: v}
     }
 
     pub fn to_native(&self) -> T {
-        T::from_big_endian(&self.0)
+        T::from_big_endian(&self._v)
     }
 }
 
 impl<T: SpecificEndian<T>> From<T> for BigEndian<T> {
     fn from(v: T) -> BigEndian<T> {
-        BigEndian::<T>(v.to_big_endian())
+        BigEndian::<T>{_v: v.to_big_endian()}
     }
 }
 
@@ -151,7 +151,7 @@ macro_rules! add_equality_ops {
     ($wrap_ty:ty) => {
         impl PartialEq for $wrap_ty {
             fn eq(&self, other: &Self) -> bool {
-                self.0 == other.0
+                self._v == other._v
             }
         }
         impl Eq for $wrap_ty {}
@@ -208,7 +208,7 @@ macro_rules! add_bitwise_ops {
         impl BitAnd for $wrap_ty {
             type Output = Self;
             fn bitand(self, rhs: Self) -> Self::Output {
-                Self(self.0 & rhs.0)
+                Self{_v: self._v & rhs._v}
             }
         }
         impl BitAndAssign for $wrap_ty {
@@ -221,7 +221,7 @@ macro_rules! add_bitwise_ops {
             type Output = Self;
 
             fn bitxor(self, rhs: Self) -> Self::Output {
-                Self(self.0 ^ rhs.0)
+                Self{_v: self._v ^ rhs._v}
             }
         }
         impl BitXorAssign for $wrap_ty {
@@ -233,7 +233,7 @@ macro_rules! add_bitwise_ops {
             type Output = Self;
 
             fn bitor(self, rhs: Self) -> Self {
-                Self(self.0 | rhs.0)
+                Self{_v: self._v | rhs._v}
             }
         }
         impl BitOrAssign for $wrap_ty {
@@ -245,7 +245,7 @@ macro_rules! add_bitwise_ops {
             type Output = Self;
 
             fn not(self) -> Self::Output {
-                Self(!self.0)
+                Self{_v: !self._v}
             }
         }        
     }
@@ -432,7 +432,7 @@ macro_rules! make_primitive_type_from_be {
 
         impl From<BigEndian<$wrap_ty>> for $wrap_ty {
             fn from(v: BigEndian<$wrap_ty>) -> $wrap_ty {
-                v.0.from_big_endian()
+                v._v.from_big_endian()
             }
         }
 
@@ -457,26 +457,26 @@ make_primitive_type_from_be!(f64);
 
 /// A little-endian struct that basically just uses the type system to tag the endianness.
 #[derive(Copy, Clone, Hash, Debug)]
-pub struct LittleEndian<T: SpecificEndian<T>> (T);
+pub struct LittleEndian<T: SpecificEndian<T>> {_v: T}
 unsafe impl<T: Send + SpecificEndian<T>> Send for LittleEndian<T> {}
 unsafe impl<T: Sync + SpecificEndian<T>> Sync for LittleEndian<T> {}
 
 impl<T> LittleEndian<T> where T: SpecificEndian<T> {
     pub fn to_bits(&self) -> T {
-        self.0
+        self._v
     }
     pub fn from_bits(v: T) -> Self {
-        Self(v)
+        Self{_v: v}
     }
     pub fn to_native(&self) -> T {
-        T::from_little_endian(&self.0)
+        T::from_little_endian(&self._v)
     }
 
 }
 
 impl<T: SpecificEndian<T>> From<T> for LittleEndian<T> {
     fn from(v: T) -> LittleEndian<T> {
-        LittleEndian::<T>(v.to_little_endian())
+        LittleEndian::<T>{_v: v.to_little_endian()}
     }
 }
 
@@ -486,7 +486,7 @@ macro_rules! make_primitive_type_from_le {
 
         impl From<LittleEndian<$wrap_ty>> for $wrap_ty {
             fn from(v: LittleEndian<$wrap_ty>) -> $wrap_ty {
-                v.0.from_little_endian()
+                v._v.from_little_endian()
             }
         }
 
@@ -721,7 +721,7 @@ mod tests {
     #[test]
     fn convert_to_native() {
         let be = BigEndian::<u64>::from(0xfe);
-        println!("{:x}, {:x}", be.0, be.to_native());
+        println!("{:x}, {:x}", be._v, be.to_native());
         assert_eq!(0xfe, be.to_native());
     }
 
@@ -763,7 +763,7 @@ mod tests {
     fn store_fp_be() {
         let be1 = BigEndian::<f64>::from(1234.5678);
         if cfg!(byte_order = "little endian") {
-            assert_ne!(1234.5678, be1.0);
+            assert_ne!(1234.5678, be1.to_bits());
         }
         assert_eq!(1234.5678, f64::from(be1));
     }
@@ -772,7 +772,7 @@ mod tests {
     fn store_fp_le() {
         let le1 = LittleEndian::<f64>::from(1234.5678);
         if cfg!(byte_order = "big endian") {
-            assert_ne!(1234.5678, le1.0);
+            assert_ne!(1234.5678, le1.to_bits());
         }
         assert_eq!(1234.5678, f64::from(le1));
     }
