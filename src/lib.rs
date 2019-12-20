@@ -626,6 +626,8 @@ mod tests {
     extern crate test;
     use super::*;
     use test::Bencher;
+    use std::mem::size_of;
+
 
     #[test]
     fn declare_all() {
@@ -692,6 +694,11 @@ mod tests {
         else {
             assert_eq!(be.to_bits(), 0xfe00000000000000);
         }
+    }
+
+    #[test]
+    fn same_size() {
+        assert_eq!(size_of::<u64be>(), size_of::<u64>());
     }
 
     #[test]
