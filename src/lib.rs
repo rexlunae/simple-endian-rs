@@ -129,9 +129,13 @@ unsafe impl<T: Sync + SpecificEndian<T>> Sync for BigEndian<T> {}
 
 
 impl<T> BigEndian<T> where T: SpecificEndian<T> {
-    pub fn raw(&self) -> T {
+    pub fn to_bits(&self) -> T {
         self.0
     }
+    pub fn from_bits(v: T) -> Self {
+        Self(v)
+    }
+
     pub fn to_native(&self) -> T {
         T::from_big_endian(&self.0)
     }
@@ -458,8 +462,11 @@ unsafe impl<T: Send + SpecificEndian<T>> Send for LittleEndian<T> {}
 unsafe impl<T: Sync + SpecificEndian<T>> Sync for LittleEndian<T> {}
 
 impl<T> LittleEndian<T> where T: SpecificEndian<T> {
-    pub fn raw(&self) -> T {
+    pub fn to_bits(&self) -> T {
         self.0
+    }
+    pub fn from_bits(v: T) -> Self {
+        Self(v)
     }
     pub fn to_native(&self) -> T {
         T::from_little_endian(&self.0)
@@ -680,10 +687,10 @@ mod tests {
     fn store_be() {
         let be: BigEndian<u64> = 0xfe.into();
         if cfg!(byte_order = "big endian") {
-            assert_eq!(be.raw(), 0xfe);
+            assert_eq!(be.to_bits(), 0xfe);
         }
         else {
-            assert_eq!(be.raw(), 0xfe00000000000000);
+            assert_eq!(be.to_bits(), 0xfe00000000000000);
         }
     }
 
@@ -691,10 +698,10 @@ mod tests {
     fn store_le() {
         let le: LittleEndian<u64> = 0xfe.into();
         if cfg!(byte_order = "big endian") {
-            assert_eq!(le.raw(), 0xfe00000000000000);
+            assert_eq!(le.to_bits(), 0xfe00000000000000);
         }
         else {
-            assert_eq!(le.raw(), 0xfe);
+            assert_eq!(le.to_bits(), 0xfe);
         }
     }
 
@@ -838,7 +845,7 @@ mod tests {
     fn inferred_type() {
         let mut be1 = BigEndian::from(1234);
         be1 &= BigEndian::from(5678);
-        println!("{} {} {}", be1, be1.raw(), be1.to_native());
+        println!("{} {} {}", be1, be1.to_bits(), be1.to_native());
         assert_eq!(be1, 1026.into());
     }
 
@@ -846,7 +853,7 @@ mod tests {
     fn inferred_type_fp() {
         let mut be1 = BigEndian::from(1234.5);
         be1 += BigEndian::from(5678.1);
-        println!("{} {} {}", be1, be1.raw(), be1.to_native());
+        println!("{} {} {}", be1, be1.to_bits(), be1.to_native());
         assert_eq!(be1, 6912.6.into());
     }
 
@@ -854,7 +861,7 @@ mod tests {
     fn inferred_type_bigger() {
         let mut be1 = BigEndian::from(0x0feeddcc);
         be1 &= BigEndian::from(0xff00);
-        println!("{} {} {}", be1, be1.raw(), be1.to_native());
+        println!("{} {} {}", be1, be1.to_bits(), be1.to_native());
         assert_eq!(be1, 0xdd00.into());
     }
 
