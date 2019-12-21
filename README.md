@@ -102,3 +102,13 @@ println!("value: {:x?}", config);
 
 Note that the println! will interpret the values in native endian.
 
+## Performance
+
+For the most part, the performance of the endian operations are extremely fast, even compared to native operations.  The main exception is the std::fmt implementations, which are in some cases quite a bit slower than default.  I'm open to suggestions on how to improve the performance, but it might be worth using .to_native() instead of directly printing the wrapped types in performance-critical contexts.
+
+## See Also
+
+This crate allows for the manipulation of specific-endian structures in memory.  It does not provide any facility for reading or writing those structures, which would probably be necessary in most use cases.  See the following other crates for that functionality:
+
+* Rust's standard transmute call: https://doc.rust-lang.org/std/mem/fn.transmute.html
+* https://crates.io/crates/safe-transmute
