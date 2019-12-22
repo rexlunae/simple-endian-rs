@@ -10,6 +10,7 @@
 //! use simple_endian::*;
 //!
 //! fn init() {
+//!     #[repr(C)]
 //!     struct BinPacket {
 //!         a: u64be,
 //!         b: u32be,
@@ -23,6 +24,39 @@
 //! ```
 //! 
 //! Trying to write `bp.a = new_a;` causes an error because the type u64 can't be directly stored.
+//! 
+//! # Example 2:
+//! 
+//! Of course, just storing things in memory isn't that useful unless you write somewhere.
+//! 
+//! ```rust
+//! use simple_endian::*;
+//! use std::fs::File;
+//! use std::io::prelude::*;
+//! use std::mem::{transmute, size_of};
+//! 
+//! // We have to specify a representation in order to define the layout.
+//! #[repr(C)]
+//! struct BinBEStruct {
+//!     pub a: u64be,
+//!     b: u64be,
+//!     c: f64be,
+//! }
+//! 
+//! fn main() -> std::io::Result<()> {
+//!    let bin_struct = BinBEStruct{a: 345.into(), b: 0xfee.into(), c: 9.345.into()};
+//!
+//!    let mut pos = 0;
+//!    let mut data_file = File::create("foo.bin")?;
+//!    let buffer = unsafe { transmute::<&BinBEStruct, &[u8; size_of::<BinBEStruct>()]>(&bin_struct) };
+//!
+//!    while pos < buffer.len() {
+//!        let bytes_written = data_file.write(&buffer[pos..])?;
+//!        pos += bytes_written;
+//!    }
+//!    Ok(())
+//! }
+//! ```
 //! 
 
 use std::{
@@ -66,7 +100,7 @@ make_specific_endian_single_byte!(i8);
 // If bool ends up being represented by something other than a byte, this might not work right.
 make_specific_endian_single_byte!(bool);
 
-/// A macro for implementing SpecificEndian<T> on types that have endian convertions built into Rust.  Currently, this is the primitive integer types.
+/// A macro for implementing SpecificEndian<T> on types that have endian conversions built into Rust.  Currently, this is the primitive integer types.
 macro_rules! make_specific_endian_integer {
     ($wrap_ty:ty) => {
 
@@ -124,6 +158,7 @@ make_specific_endian_float!(f64);
 
 /// A big-endian representation of type T that implements SpecificEndian<T>.  Data stored in the struct must be converted to big-endian using from() or into().
 #[derive(Copy, Clone, Hash, Debug)]
+#[repr(transparent)]
 pub struct BigEndian<T: SpecificEndian<T>> {_v: T}
 unsafe impl<T: Send + SpecificEndian<T>> Send for BigEndian<T> {}
 unsafe impl<T: Sync + SpecificEndian<T>> Sync for BigEndian<T> {}
@@ -153,6 +188,7 @@ impl<T: SpecificEndian<T>> From<T> for BigEndian<T> {
 
 /// A little-endian representation of type T that implements SpecificEndian<T>.  Data stored in the struct must be converted to little-endian using from() or into().
 #[derive(Copy, Clone, Hash, Debug)]
+#[repr(transparent)]
 pub struct LittleEndian<T: SpecificEndian<T>> {_v: T}
 unsafe impl<T: Send + SpecificEndian<T>> Send for LittleEndian<T> {}
 unsafe impl<T: Sync + SpecificEndian<T>> Sync for LittleEndian<T> {}
@@ -686,6 +722,7 @@ mod tests {
 
     #[test]
     fn make_struct() {
+        #[repr(C)]
         struct Foo (
             BigEndian<i16>,
             LittleEndian<i16>,
