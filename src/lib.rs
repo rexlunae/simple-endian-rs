@@ -1,29 +1,29 @@
 #![feature(test)]
-/// Many byte-order-handling libraries focus on providing code to convert to and from big- or little-endian.  However,
-/// this requires users of those libraries to use a lot of explicit logic.  This library uses the Rust type system to
-/// enforce conversions invisibly, and also ensure that they are done consistently.  A struct member can be read and written
-/// simply using the standard From and Into trait methods (from() and into()).  No explicit endian checks are required.
-///  
-/// # Example 1:
-/// 
-///```rust
-/// use simple_endian::*;
-///
-/// fn init() {
-///     struct BinPacket {
-///         a: u64be,
-///         b: u32be,
-///     }
-///     let mut bp = BinPacket{a: 0xfe.into(), b: 10.into()};
-///     let new_a = bp.a.to_native() * 1234; 
+//! Many byte-order-handling libraries focus on providing code to convert to and from big- or little-endian.  However,
+//! this requires users of those libraries to use a lot of explicit logic.  This library uses the Rust type system to
+//! enforce conversions invisibly, and also ensure that they are done consistently.  A struct member can be read and written
+//! simply using the standard From and Into trait methods (from() and into()).  No explicit endian checks are required.
+//!  
+//! # Example 1:
+//! 
+//!```rust
+//! use simple_endian::*;
+//!
+//! fn init() {
+//!     struct BinPacket {
+//!         a: u64be,
+//!         b: u32be,
+//!     }
+//!     let mut bp = BinPacket{a: 0xfe.into(), b: 10.into()};
+//!     let new_a = bp.a.to_native() * 1234; 
  
-///     bp.a = new_a.into();
-///     bp.b = 1234.into();
-/// }
-/// ```
-/// 
-/// Trying to write `bp.a = new_a;` causes an error because the type u64 can't be directly stored.
-/// 
+//!     bp.a = new_a.into();
+//!     bp.b = 1234.into();
+//! }
+//! ```
+//! 
+//! Trying to write `bp.a = new_a;` causes an error because the type u64 can't be directly stored.
+//! 
 
 use std::{
     cmp::Ordering,
