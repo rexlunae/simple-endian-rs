@@ -31,7 +31,7 @@ use std::{
     fmt::{Formatter, Result, UpperHex, LowerHex, Octal, Binary, Display},
 };
 
-/// A trait that allows endian conversions.  Any type that wants to use this crate to do endian conversions must implement this trait.
+/// Any object implementing SpecificEndian<T> can be converted between big and little endian.  Implement this trait to allow for endian conversion by this crate.
 pub trait SpecificEndian<T> where Self: Into<T> + Clone + Copy {
     fn to_big_endian(&self) -> T;
     fn to_little_endian(&self) -> T;
@@ -40,6 +40,7 @@ pub trait SpecificEndian<T> where Self: Into<T> + Clone + Copy {
 
 }
 
+/// A macro implementing SpecificEndian<T> for simple data types where big and little endian forms are the same.
 macro_rules! make_specific_endian_single_byte {
     ($wrap_ty:ty) => {
 
@@ -65,6 +66,7 @@ make_specific_endian_single_byte!(i8);
 // If bool ends up being represented by something other than a byte, this might not work right.
 make_specific_endian_single_byte!(bool);
 
+/// A macro for implementing SpecificEndian<T> on types that have endian convertions built into Rust.  Currently, this is the primitive integer types.
 macro_rules! make_specific_endian_integer {
     ($wrap_ty:ty) => {
 
@@ -96,8 +98,7 @@ make_specific_endian_integer!(i128);
 make_specific_endian_integer!(usize);
 make_specific_endian_integer!(isize);
 
-// Rust doesn't have built-in byte-swapping for floating-point types,
-// so we use integer logic.
+/// Uses .from_bits() and .to_bits() to implement SpecificEndian<T> with Integer types.  Can be used with any type having these methods, but mainly for use with the floats.
 macro_rules! make_specific_endian_float {
     ($wrap_ty:ty) => {
 
@@ -121,7 +122,7 @@ macro_rules! make_specific_endian_float {
 make_specific_endian_float!(f32);
 make_specific_endian_float!(f64);
 
-/// A big-endian struct that basically just uses the type system to tag the endianness.
+/// A big-endian representation of type T that implements SpecificEndian<T>.  Data stored in the struct must be converted to big-endian using from() or into().
 #[derive(Copy, Clone, Hash, Debug)]
 pub struct BigEndian<T: SpecificEndian<T>> {_v: T}
 unsafe impl<T: Send + SpecificEndian<T>> Send for BigEndian<T> {}
@@ -129,12 +130,15 @@ unsafe impl<T: Sync + SpecificEndian<T>> Sync for BigEndian<T> {}
 
 
 impl<T> BigEndian<T> where T: SpecificEndian<T> {
+    /// Returns the raw data stored in the struct.
     pub fn to_bits(&self) -> T {
         self._v
     }
+    /// Imports the data raw into a BigEndian<T> struct.
     pub fn from_bits(v: T) -> Self {
         Self{_v: v}
     }
+    /// Converts the data to the same type T in host-native endian.
     pub fn to_native(&self) -> T {
         T::from_big_endian(&self._v)
     }
@@ -146,6 +150,33 @@ impl<T: SpecificEndian<T>> From<T> for BigEndian<T> {
     }
 }
 
+
+/// A little-endian representation of type T that implements SpecificEndian<T>.  Data stored in the struct must be converted to little-endian using from() or into().
+#[derive(Copy, Clone, Hash, Debug)]
+pub struct LittleEndian<T: SpecificEndian<T>> {_v: T}
+unsafe impl<T: Send + SpecificEndian<T>> Send for LittleEndian<T> {}
+unsafe impl<T: Sync + SpecificEndian<T>> Sync for LittleEndian<T> {}
+
+impl<T> LittleEndian<T> where T: SpecificEndian<T> {
+    /// Returns the raw data stored in the struct.
+    pub fn to_bits(&self) -> T {
+        self._v
+    }
+    /// Imports the data raw into a LittleEndian<T> struct.
+    pub fn from_bits(v: T) -> Self {
+        Self{_v: v}
+    }
+    /// Converts the data to the same type T in host-native endian.
+    pub fn to_native(&self) -> T {
+        T::from_little_endian(&self._v)
+    }
+}
+
+impl<T: SpecificEndian<T>> From<T> for LittleEndian<T> {
+    fn from(v: T) -> LittleEndian<T> {
+        LittleEndian::<T>{_v: v.to_little_endian()}
+    }
+}
 macro_rules! add_equality_ops {
     ($wrap_ty:ty) => {
         impl PartialEq for $wrap_ty {
@@ -454,31 +485,6 @@ make_primitive_type_from_be!(isize);
 make_primitive_type_from_be!(f32);
 make_primitive_type_from_be!(f64);
 
-/// A little-endian struct that basically just uses the type system to tag the endianness.
-#[derive(Copy, Clone, Hash, Debug)]
-pub struct LittleEndian<T: SpecificEndian<T>> {_v: T}
-unsafe impl<T: Send + SpecificEndian<T>> Send for LittleEndian<T> {}
-unsafe impl<T: Sync + SpecificEndian<T>> Sync for LittleEndian<T> {}
-
-impl<T> LittleEndian<T> where T: SpecificEndian<T> {
-    pub fn to_bits(&self) -> T {
-        self._v
-    }
-    pub fn from_bits(v: T) -> Self {
-        Self{_v: v}
-    }
-    pub fn to_native(&self) -> T {
-        T::from_little_endian(&self._v)
-    }
-
-}
-
-impl<T: SpecificEndian<T>> From<T> for LittleEndian<T> {
-    fn from(v: T) -> LittleEndian<T> {
-        LittleEndian::<T>{_v: v.to_little_endian()}
-    }
-}
-
 // Rust's orphan trait rule prevents us from using a generic implementation on the primitive types, so we do this:
 macro_rules! make_primitive_type_from_le {
     ($wrap_ty:ty) => {
@@ -570,52 +576,79 @@ impl<T: Display + SpecificEndian<T>> Display for LittleEndian<T> {
     }
 }
 
-// Shortcut types:
+/// Shorthand for LittleEndian<u16> 
 #[allow(non_camel_case_types)]
 pub type u16le = LittleEndian<u16>;
+/// Shorthand for BigEndian<u16> 
 #[allow(non_camel_case_types)]
 pub type u16be = BigEndian<u16>;
+/// Shorthand for LittleEndian<u32> 
 #[allow(non_camel_case_types)]
 pub type u32le = LittleEndian<u32>;
+/// Shorthand for BigEndian<u32> 
 #[allow(non_camel_case_types)]
 pub type u32be = BigEndian<u32>;
+/// Shorthand for LittleEndian<u64> 
 #[allow(non_camel_case_types)]
 pub type u64le = LittleEndian<u64>;
+/// Shorthand for BigEndian<u64> 
 #[allow(non_camel_case_types)]
 pub type u64be = BigEndian<u64>;
+/// Shorthand for LittleEndian<u128>
 #[allow(non_camel_case_types)]
 pub type u128le = LittleEndian<u128>;
+/// Shorthand for BigEndian<u128> 
 #[allow(non_camel_case_types)]
 pub type u128be = BigEndian<u128>;
+/// Shorthand for LittleEndian<usize>
+#[allow(non_camel_case_types)]
+pub type usizele = LittleEndian<usize>;
+/// Shorthand for BigEndian<usize> 
 #[allow(non_camel_case_types)]
 pub type usizebe = BigEndian<usize>;
 
+/// Shorthand for LittleEndian<i16>
 #[allow(non_camel_case_types)]
 pub type i16le = LittleEndian<i16>;
+/// Shorthand for BigEndian<i16>
 #[allow(non_camel_case_types)]
 pub type i16be = BigEndian<i16>;
+/// Shorthand for LittleEndian<i32>
 #[allow(non_camel_case_types)]
 pub type i32le = LittleEndian<i32>;
+/// Shorthand for BigEndian<i32>
 #[allow(non_camel_case_types)]
 pub type i32be = BigEndian<i32>;
+/// Shorthand for LittleEndian<i64>
 #[allow(non_camel_case_types)]
 pub type i64le = LittleEndian<i64>;
+/// Shorthand for BigEndian<i64>
 #[allow(non_camel_case_types)]
 pub type i64be = BigEndian<i64>;
+/// Shorthand for LittleEndian<i128>
 #[allow(non_camel_case_types)]
 pub type i128le = LittleEndian<i128>;
+/// Shorthand for BigEndian<i128>
 #[allow(non_camel_case_types)]
 pub type i128be = BigEndian<i128>;
+/// Shorthand for LittleEndian<isize>
+#[allow(non_camel_case_types)]
+pub type isizele = LittleEndian<isize>;
+/// Shorthand for BigEndian<isize>
 #[allow(non_camel_case_types)]
 pub type isizebe = BigEndian<isize>;
 
+/// Shorthand for LittleEndian<f32>
 #[allow(non_camel_case_types)]
 pub type f32le = LittleEndian<f32>;
+/// Shorthand for BigEndian<f32>
 #[allow(non_camel_case_types)]
 pub type f32be = BigEndian<f32>;
 
+/// Shorthand for LittleEndian<f64>
 #[allow(non_camel_case_types)]
 pub type f64le = LittleEndian<f64>;
+/// Shorthand for BigEndian<f64>
 #[allow(non_camel_case_types)]
 pub type f64be = BigEndian<f64>;
 
