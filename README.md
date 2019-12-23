@@ -25,10 +25,10 @@ use simple_endian::*;
 
 let foo: u64be = 4.into();
 
-println!("raw: {:x}, value: {:x}", foo.raw(), foo);
+println!("raw: {:x}, value: {:x}", foo.to_bits(), foo);
 ```
 
-The output will depend on what sort of computer you're using.  If you're running a little-endian system, such as x86 (PCs, Macs, etc.), you will see the raw in big endian representation, as it's stored in memory.  Note that the raw method is mostly there for debugging purposes, and should not be used often.
+The output will depend on what sort of computer you're using.  If you're running a little-endian system, such as x86 (PCs, Macs, etc.), you will see the big endian representation interpreted as if little-endian, as it's stored in memory.  Note that the raw method is mostly there for debugging purposes, and should not be used often.
 
 This works in reverse as well:
 ```Rust
