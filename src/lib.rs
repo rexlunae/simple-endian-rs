@@ -157,7 +157,7 @@ make_specific_endian_float!(f32);
 make_specific_endian_float!(f64);
 
 /// A big-endian representation of type T that implements SpecificEndian<T>.  Data stored in the struct must be converted to big-endian using from() or into().
-#[derive(Copy, Clone, Hash, Debug)]
+#[derive(Copy, Clone, Hash, Debug, Default)]
 #[repr(transparent)]
 pub struct BigEndian<T: SpecificEndian<T>> {_v: T}
 unsafe impl<T: Send + SpecificEndian<T>> Send for BigEndian<T> {}
@@ -187,7 +187,7 @@ impl<T: SpecificEndian<T>> From<T> for BigEndian<T> {
 
 
 /// A little-endian representation of type T that implements SpecificEndian<T>.  Data stored in the struct must be converted to little-endian using from() or into().
-#[derive(Copy, Clone, Hash, Debug)]
+#[derive(Copy, Clone, Hash, Debug, Default)]
 #[repr(transparent)]
 pub struct LittleEndian<T: SpecificEndian<T>> {_v: T}
 unsafe impl<T: Send + SpecificEndian<T>> Send for LittleEndian<T> {}
