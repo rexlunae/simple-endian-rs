@@ -7,7 +7,8 @@ license = "MIT"
 description = "A create for defining endianness within your data structures, to make handling portable data structures simpler."
 repository = "https://github.com/rexlunae/simple-endian-rs"
 keywords = ["endian", "byteorder", "big-endian", "little-endian"]
-documentation = "https://github.com/rexlunae/simple-endian-rs/blob/master/README.md"
+documentation = "https://docs.rs/simple_endian/"
 homepage = "https://github.com/rexlunae/simple-endian-rs"
+readme = "README.md"
 
 [dependencies]
