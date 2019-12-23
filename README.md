@@ -116,4 +116,5 @@ This crate allows for the manipulation of specific-endian structures in memory. 
 * https://crates.io/crates/safe-transmute
 * https://crates.io/crates/endian_trait
 * https://crates.io/crates/byteordered
+* https://crates.io/crates/persistence - A library that wraps structs in mmap, and can be used well with this to make those structs portable.
 
