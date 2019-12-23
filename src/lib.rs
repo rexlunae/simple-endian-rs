@@ -47,7 +47,7 @@
 //!    let bin_struct = BinBEStruct{a: 345.into(), b: 0xfee.into(), c: 9.345.into()};
 //!
 //!    let mut pos = 0;
-//!    let mut data_file = File::create("foo.bin")?;
+//!    let mut data_file = File::create(".test.bin")?;
 //!    let buffer = unsafe { transmute::<&BinBEStruct, &[u8; size_of::<BinBEStruct>()]>(&bin_struct) };
 //!
 //!    while pos < buffer.len() {
