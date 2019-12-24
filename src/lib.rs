@@ -25,7 +25,7 @@
 //! 
 //! Trying to write `bp.a = new_a;` causes an error because the type u64 can't be directly stored.
 //! 
-//! # Example 2:
+//! # Example 2: Writing a portable struct to a file.
 //! 
 //! Of course, just storing things in memory isn't that useful unless you write somewhere.
 //! 
@@ -57,7 +57,57 @@
 //!    Ok(())
 //! }
 //! ```
+//! # Example 3: Mmapping a portable struct with the memmap crate.
 //! 
+//! You'll need to add memmap to your Cargo.toml to get this to actually work:
+//! 
+//! ```rust
+//! #![feature(rustc_private)]
+//! extern crate memmap;
+//! 
+//!  use std::{
+//!     io::Error,
+//!     fs::OpenOptions,
+//!     mem::size_of,
+//! };
+//! 
+//! use memmap::MmapOptions;
+//! use simple_endian::*;
+//! 
+//! #[repr(C)]
+//! struct MyBEStruct {
+//!     header: u64be,
+//!     label: [u8; 8],
+//!     count: u128be,
+//! }
+//! 
+//! fn main() -> Result<(), Error> {
+//! let file = OpenOptions::new()
+//!     .read(true).write(true).create(true)
+//!     .open(".test.bin")?;
+//! 
+//! // Truncate the file to the size of the header.
+//! file.set_len(size_of::<MyBEStruct>() as u64)?;
+//! let mut mmap = unsafe { MmapOptions::new().map_mut(&file)? };
+//! 
+//! let mut ptr = mmap.as_mut_ptr() as *mut MyBEStruct;
+//! 
+//! unsafe {
+//!     // Set the magic number
+//!     (*ptr).header = 0xfeedface.into();
+//! 
+//!     // Increment the counter each time we run.
+//!     (*ptr).count += 1.into();
+//! 
+//!     (*ptr).label = *b"Iamhere!";
+//! }
+//! 
+//! println!("done.");
+//! Ok(())
+//! }
+//! ```
+//! 
+
 
 use std::{
     cmp::Ordering,
