@@ -82,28 +82,28 @@
 //! }
 //! 
 //! fn main() -> Result<(), Error> {
-//! let file = OpenOptions::new()
-//!     .read(true).write(true).create(true)
-//!     .open(".test.bin")?;
+//!     let file = OpenOptions::new()
+//!         .read(true).write(true).create(true)
+//!         .open(".test.bin")?;
 //! 
-//! // Truncate the file to the size of the header.
-//! file.set_len(size_of::<MyBEStruct>() as u64)?;
-//! let mut mmap = unsafe { MmapOptions::new().map_mut(&file)? };
+//!     // Truncate the file to the size of the header.
+//!     file.set_len(size_of::<MyBEStruct>() as u64)?;
+//!     let mut mmap = unsafe { MmapOptions::new().map_mut(&file)? };
 //! 
-//! let mut ptr = mmap.as_mut_ptr() as *mut MyBEStruct;
+//!     let mut ptr = mmap.as_mut_ptr() as *mut MyBEStruct;
 //! 
-//! unsafe {
-//!     // Set the magic number
-//!     (*ptr).header = 0xfeedface.into();
+//!     unsafe {
+//!         // Set the magic number
+//!         (*ptr).header = 0xfeedface.into();
 //! 
-//!     // Increment the counter each time we run.
-//!     (*ptr).count += 1.into();
+//!         // Increment the counter each time we run.
+//!         (*ptr).count += 1.into();
 //! 
-//!     (*ptr).label = *b"Iamhere!";
-//! }
+//!         (*ptr).label = *b"Iamhere!";
+//!     }
 //! 
-//! println!("done.");
-//! Ok(())
+//!     println!("done.");
+//!     Ok(())
 //! }
 //! ```
 //! 
