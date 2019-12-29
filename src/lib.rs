@@ -125,6 +125,9 @@ mod shift_ops;
 /// General math operations.
 mod math_ops;
 
+/// Negations.
+mod neg_ops;
+
 /// General math operations.
 mod formatting_ops;
 
