@@ -20,7 +20,7 @@ Because I think a better approach is to define your endianness as part of your d
 
 The philosophy of this crate is that you define your endian when you write your data structures, and then you use clear, imperative logic to mutate it without needing to think about the details or the host endian.  This makes it fundamentally different from crates that just give you a way to read a &[u8; 8] into a u64.
 
-```Rust
+```rust
 use simple_endian::*;
 
 let foo: u64be = 4.into();
@@ -31,7 +31,7 @@ println!("raw: {:x}, value: {:x}", foo.to_bits(), foo);
 The output will depend on what sort of computer you're using.  If you're running a little-endian system, such as x86 (PCs, Macs, etc.), you will see the big endian representation interpreted as if little-endian, as it's stored in memory.  Note that the .to_bits() method is mostly there for debugging purposes, and should not be used often.
 
 This works in reverse as well:
-```Rust
+```rust
 use simple_endian::*;
 
 let foo: u64be = 4.into();
@@ -41,7 +41,7 @@ println!("value: {:x}", bar);
 ```
 
 If you prefer, there's a convenience method so that you don't need to explicitly convert back to the basic native type.
-```Rust
+```rust
 use simple_endian::*;
 
 let foo: u64be = 4.into();
@@ -52,7 +52,7 @@ println!("value: {:x}", bar);
 
 And the type system ensures that native-endian values are never written without being converted into the proper endian.
 
-```Rust
+```rust
 let mut foo: u64be = 4.into();
 foo = 7;     // Will not compile without .into().
 ```
@@ -72,7 +72,7 @@ At the time of this writing, the only type that doesn't have an implementation i
 
 This crate also provides implementations of a variety of useful traits for the types that it wraps, including boolean logic implementations for the integer types.  This allows some amount of logic to be performed directly without byte-swapping overhead.
 
-```Rust
+```rust
 use simple_endian::*;
 
 let ip: BigEndian::<u32> = 0x0a00000a.into();
@@ -87,7 +87,7 @@ As you see, the network is calculated by masking the IP address with the subnet 
 
 Alternatively, you might want to define a structure with the elements typed so that it can be moved around as a unit.
 
-```Rust
+```rust
 use simple_endian::*;
 
 #[derive(Debug)]
