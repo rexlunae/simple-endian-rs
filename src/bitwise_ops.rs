@@ -10,21 +10,13 @@
 //! a ^= 0x5555555.into();
 //! ```
 
-use std::{
-    cmp::Ordering,
-    ops::{BitAnd, Not, BitAndAssign, BitXor, BitXorAssign, BitOr, BitOrAssign},
-};
+use std::ops::{BitAnd, Not, BitAndAssign, BitXor, BitXorAssign, BitOr, BitOrAssign};
 
 use super::*;
 
 /// Implement the bitwise operations on the types.  These should be as fast in either endian, because they are endian-agnostic.
 macro_rules! add_bitwise_ops {
     ($wrap_ty:ty) => {
-        impl Ord for $wrap_ty {
-            fn cmp(&self, other: &Self) -> Ordering {
-                self.to_native().cmp(&other.to_native())
-            }
-        }
         impl BitAnd for $wrap_ty {
             type Output = Self;
             fn bitand(self, rhs: Self) -> Self::Output {

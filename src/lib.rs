@@ -113,11 +113,11 @@
 mod specific_endian;
 pub use specific_endian::*;
 
-/// Ops for comparisons and ordering.
-mod comparison_ops;
-
 /// Bitwise operations.  These should be equally fast in any endian.
 mod bitwise_ops;
+
+/// Ops for comparisons and ordering.
+mod comparison_ops;
 
 /// Shift operations.
 mod shift_ops;
