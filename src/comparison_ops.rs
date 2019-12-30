@@ -5,12 +5,6 @@ use super::*;
 
 macro_rules! add_equality_ops {
     ($wrap_ty:ty) => {
-        impl PartialEq for $wrap_ty {
-            fn eq(&self, other: &Self) -> bool {
-                self._v == other._v
-            }
-        }
-        impl Eq for $wrap_ty {}
         impl PartialOrd for $wrap_ty {
             fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
                 self.to_native().partial_cmp(&other.to_native())
@@ -87,8 +81,8 @@ mod tests {
 
     #[test]
     fn lt_fp_be() {
-        let be1 = BigEndian::<f64>::from(1234.5678);
-        let be2 = BigEndian::<f64>::from(6234.5678);
+        let be1 = BigEndian::from(1234.5678);
+        let be2 = BigEndian::from(6234.5678);
         assert_eq!(true, be1 < be2);
     }
 

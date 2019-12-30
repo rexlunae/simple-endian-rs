@@ -1,5 +1,5 @@
 
-/// Any object implementing SpecificEndian<T> can be converted between big and little endian.  Implement this trait to allow for endian conversion by this crate.
+/// Any object implementing `SpecificEndian<T>` can be converted between big and little endian.  Implement this trait to allow for endian conversion by this crate.
 pub trait SpecificEndian<T> where Self: Into<T> + Clone + Copy {
     fn to_big_endian(&self) -> T;
     fn to_little_endian(&self) -> T;
@@ -90,8 +90,8 @@ macro_rules! make_specific_endian_float {
 make_specific_endian_float!(f32);
 make_specific_endian_float!(f64);
 
-/// A big-endian representation of type T that implements SpecificEndian<T>.  Data stored in the struct must be converted to big-endian using from() or into().
-#[derive(Copy, Clone, Hash, Debug, Default)]
+/// A big-endian representation of type `T` that implements `SpecificEndian<T>`.  Data stored in the struct must be converted to big-endian using `::from()` or `.into()`.
+#[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq)]
 #[repr(transparent)]
 pub struct BigEndian<T: SpecificEndian<T>> {pub(crate) _v: T}
 unsafe impl<T: Send + SpecificEndian<T>> Send for BigEndian<T> {}
@@ -120,8 +120,8 @@ impl<T: SpecificEndian<T>> From<T> for BigEndian<T> {
 }
 
 
-/// A little-endian representation of type T that implements SpecificEndian<T>.  Data stored in the struct must be converted to little-endian using from() or into().
-#[derive(Copy, Clone, Hash, Debug, Default)]
+/// A little-endian representation of type `T` that implements `SpecificEndian<T>`.  Data stored in the struct must be converted to little-endian using `::from()` or `.into()`.
+#[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq)]
 #[repr(transparent)]
 pub struct LittleEndian<T: SpecificEndian<T>> {pub(crate) _v: T}
 unsafe impl<T: Send + SpecificEndian<T>> Send for LittleEndian<T> {}
