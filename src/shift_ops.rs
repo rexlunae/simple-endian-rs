@@ -1,3 +1,5 @@
+//! Bitshift operations, for integer types only.
+
 use std::ops::{Shl, ShlAssign, Shr, ShrAssign};
 
 use super::*;

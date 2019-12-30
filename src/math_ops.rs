@@ -1,3 +1,4 @@
+//! The math operations.  These all have some cost because they require conversion to native endian.
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 use super::*;

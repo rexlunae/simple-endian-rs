@@ -1,3 +1,4 @@
+//! Comparison ops.
 use std::cmp::Ordering;
 
 use super::*;

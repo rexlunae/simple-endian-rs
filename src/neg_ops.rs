@@ -1,4 +1,4 @@
-//- Module adding negation to the types where it's possible.
+//! Module adding negation to the types where it's possible.
 use std::ops::Neg;
 
 use super::*;
