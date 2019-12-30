@@ -1,3 +1,15 @@
+//! Bitwise operations.  These should be equally fast in either endian.
+//! 
+//! ```rust
+//! // These should all be basically zero-cost:
+//! use simple_endian::*;
+//! let mut a = BigEndian::from(0xf8dc);
+//! let mask = BigEndian::from(0xf0f0f);
+//! a &= mask;
+//! a |= BigEndian::from(0xfff0000) | mask;
+//! a ^= 0x5555555.into();
+//! ```
+
 use std::{
     cmp::Ordering,
     ops::{BitAnd, Not, BitAndAssign, BitXor, BitXorAssign, BitOr, BitOrAssign},
