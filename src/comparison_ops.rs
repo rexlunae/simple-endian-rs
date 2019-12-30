@@ -50,3 +50,45 @@ add_equality_ops!(LittleEndian<usize>);
 add_equality_ops!(LittleEndian<isize>);
 add_equality_ops!(LittleEndian<f32>);
 add_equality_ops!(LittleEndian<f64>);
+
+#[cfg(test)]
+mod tests {
+    extern crate test;
+    use crate::*;
+
+    #[test]
+    fn equality_test() {
+        let be1 = BigEndian::from(12345);
+        let be2 = BigEndian::from(12345);
+        assert_eq!(true, be1 == be2);
+    }
+
+    #[test]
+    fn not_equality_test() {
+        let be1 = BigEndian::from(12345);
+        let be2 = BigEndian::from(34565);
+        assert_eq!(true, be1 != be2);
+    }
+
+    #[test]
+    fn lt_test() {
+        let be1 = BigEndian::from(12345);
+        let be2 = BigEndian::from(34565);
+        assert_eq!(true, be1 < be2);
+    }
+
+    #[test]
+    fn gt_test() {
+        let be1 = BigEndian::from(34565);
+        let be2 = BigEndian::from(12345);
+        assert_eq!(true, be1 > be2);
+    }
+
+    #[test]
+    fn lt_fp_be() {
+        let be1 = BigEndian::<f64>::from(1234.5678);
+        let be2 = BigEndian::<f64>::from(6234.5678);
+        assert_eq!(true, be1 < be2);
+    }
+
+}

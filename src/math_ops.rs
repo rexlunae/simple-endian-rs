@@ -91,3 +91,46 @@ add_math_ops!(LittleEndian<usize>);
 add_math_ops!(LittleEndian<isize>);
 add_math_ops!(LittleEndian<f32>);
 add_math_ops!(LittleEndian<f64>);
+
+#[cfg(test)]
+mod tests {
+    extern crate test;
+    use crate::*;
+
+    #[test]
+    fn add_fp_be() {
+        let mut be1 = f64be::from(1234.5678);
+        be1 = be1 + 1.0.into();
+        be1 += 1.0.into();
+        assert_eq!(be1, 1236.5678.into());
+    }
+
+    #[test]
+    fn subtract_fp_be() {
+        let mut be1 = f64be::from(1234.5678);
+        be1 = be1 - 1.0.into();
+        be1 -= 1.0.into();
+        assert_eq!(be1, 1232.5678.into());
+    }
+
+    #[test]
+    fn mul_fp_be() {
+        let mut be1 = f64be::from(1234.5678);
+        be1 = be1 * 10.0.into();
+        be1 *= 10.0.into();
+        assert_eq!(be1, 123456.78.into());
+    }
+
+    #[test]
+    fn div_fp_be() {
+        let mut ne1: f64 = 1234.5678;
+        let mut be1 = f64be::from(ne1);
+        be1 = be1 / 10.0.into();
+        ne1 = ne1 / 10.0;
+        be1 /= 10.0.into();
+        ne1 /= 10.0;
+        assert_eq!(ne1, be1.into());
+    }
+
+
+}

@@ -205,3 +205,202 @@ make_primitive_type_from_le!(usize);
 make_primitive_type_from_le!(isize);
 make_primitive_type_from_le!(f32);
 make_primitive_type_from_le!(f64);
+
+#[cfg(test)]
+mod tests {
+    extern crate test;
+    use crate::*;
+    use std::mem::size_of;
+
+    #[test]
+    fn declare_all() {
+        let _a: BigEndian<i16> = 0xfe.into();
+        let _a: LittleEndian<i16> = 0xfe.into();
+        let _a: BigEndian<u16> = 0xfe.into();
+        let _a: LittleEndian<u16> = 0xfe.into();
+
+        let _a: BigEndian<i32> = 0xfe.into();
+        let _a: LittleEndian<i32> = 0xfe.into();
+        let _a: BigEndian<u32> = 0xfe.into();
+        let _a: LittleEndian<u32> = 0xfe.into();
+
+        let _a: BigEndian<i64> = 0xfe.into();
+        let _a: LittleEndian<i64> = 0xfe.into();
+        let _a: BigEndian<u64> = 0xfe.into();
+        let _a: LittleEndian<u64> = 0xfe.into();
+
+        let _a: BigEndian<i128> = 0xfe.into();
+        let _a: LittleEndian<i128> = 0xfe.into();
+        let _a: BigEndian<u128> = 0xfe.into();
+        let _a: LittleEndian<u128> = 0xfe.into();
+    }
+
+    #[test]
+    fn make_struct() {
+        #[repr(C)]
+        struct Foo (
+            BigEndian<i16>,
+            LittleEndian<i16>,
+            BigEndian<u16>,
+            LittleEndian<u16>,
+
+            BigEndian<i32>,
+            LittleEndian<i32>,
+            BigEndian<u32>,
+            LittleEndian<u32>,
+
+            BigEndian<i64>,
+            LittleEndian<i64>,
+            BigEndian<u64>,
+            LittleEndian<u64>,
+
+            BigEndian<i128>,
+            LittleEndian<i128>,
+            BigEndian<u128>,
+            LittleEndian<u128>,
+
+            BigEndian<f32>,
+            LittleEndian<f32>,
+            BigEndian<f64>,
+            LittleEndian<f64>,
+
+        );
+
+        let _foo = Foo(0.into(), 1.into(), 2.into(), 3.into(), 4.into(), 5.into(), 6.into(), 7.into(), 8.into(), 9.into(), 10.into(), 11.into(), 12.into(), 13.into(), 14.into(), 15.into(), (0.1).into(), (123.5).into(), (7.8).into(), (12345.4567).into());
+    }
+
+    #[test]
+    fn store_be() {
+        let be: BigEndian<u64> = 0xfe.into();
+        if cfg!(byte_order = "big endian") {
+            assert_eq!(be.to_bits(), 0xfe);
+        }
+        else {
+            assert_eq!(be.to_bits(), 0xfe00000000000000);
+        }
+    }
+
+    #[test]
+    fn same_size() {
+        assert_eq!(size_of::<u64be>(), size_of::<u64>());
+    }
+
+    #[test]
+    fn store_le() {
+        let le: LittleEndian<u64> = 0xfe.into();
+        if cfg!(byte_order = "big endian") {
+            assert_eq!(le.to_bits(), 0xfe00000000000000);
+        }
+        else {
+            assert_eq!(le.to_bits(), 0xfe);
+        }
+    }
+
+    #[test]
+    fn cast() {
+        let be = BigEndian::from(12345);
+        let ne: u64 = be.into();
+        assert_eq!(ne, 12345);
+    }
+
+    #[test]
+    fn convert_back() {
+        let be = BigEndian::from(12345);
+        println!("{}", u64::from(be));
+    }
+
+    #[test]
+    fn convert_to_native() {
+        let be = BigEndian::from(0xfe);
+        println!("{:x}, {:x}", be._v, be.to_native());
+        assert_eq!(0xfe, be.to_native());
+    }
+
+    #[test]
+    fn store_fp_be() {
+        let be1 = BigEndian::<f64>::from(1234.5678);
+        if cfg!(byte_order = "little endian") {
+            assert_ne!(1234.5678, be1.to_bits());
+        }
+        assert_eq!(1234.5678, f64::from(be1));
+    }
+
+    #[test]
+    fn store_fp_le() {
+        let le1 = LittleEndian::<f64>::from(1234.5678);
+        if cfg!(byte_order = "big endian") {
+            assert_ne!(1234.5678, le1.to_bits());
+        }
+        assert_eq!(1234.5678, f64::from(le1));
+    }
+
+    #[test]
+    fn inferred_type() {
+        let mut be1 = BigEndian::from(1234);
+        be1 &= BigEndian::from(5678);
+        println!("{} {} {}", be1, be1.to_bits(), be1.to_native());
+        assert_eq!(be1, 1026.into());
+    }
+
+    #[test]
+    fn inferred_type_fp() {
+        let mut be1 = BigEndian::from(1234.5);
+        be1 += BigEndian::from(5678.1);
+        println!("{} {} {}", be1, be1.to_bits(), be1.to_native());
+        assert_eq!(be1, 6912.6.into());
+    }
+
+    #[test]
+    fn inferred_type_bigger() {
+        let mut be1 = BigEndian::from(0x0feeddcc);
+        be1 &= BigEndian::from(0xff00);
+        println!("{} {} {}", be1, be1.to_bits(), be1.to_native());
+        assert_eq!(be1, 0xdd00.into());
+    }
+
+    #[test]
+    fn custom_type() {
+        #[derive(Copy, Clone, Debug)]
+        enum EndianAwareExample {
+            BigEndianFunction(u64),
+            LittleEndianFunction(u64),
+        }
+        impl SpecificEndian<EndianAwareExample> for EndianAwareExample {
+            fn to_big_endian(&self) -> Self {
+                match self {
+                    EndianAwareExample::BigEndianFunction(_v) => *self,
+                    EndianAwareExample::LittleEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_big_endian()),
+                }
+            }
+            fn to_little_endian(&self) -> Self {
+                match self {
+                    EndianAwareExample::LittleEndianFunction(_v) => *self,
+                    EndianAwareExample::BigEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_little_endian()),
+                }
+            }
+            fn from_big_endian(&self) -> Self {
+                match self {
+                    EndianAwareExample::BigEndianFunction(_v) => *self,
+                    EndianAwareExample::LittleEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_big_endian()),
+                }
+            }
+            fn from_little_endian(&self) -> Self {
+                match self {
+                    EndianAwareExample::LittleEndianFunction(_v) => *self,
+                    EndianAwareExample::BigEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_little_endian()),
+                }
+            }
+
+        }
+        let foo: BigEndian<EndianAwareExample> = EndianAwareExample::LittleEndianFunction(0xf0).into();
+        #[allow(unused_assignments)]
+        let mut value = 0;
+        match foo.to_native() {
+            EndianAwareExample::BigEndianFunction(v) => { println!("be: {:x}", v); value = v }
+            EndianAwareExample::LittleEndianFunction(v) => { println!("le: {:x}", v); value = 0 }
+        }
+        assert_eq!(value, 0x0f000000000000000);
+    }
+
+}
+

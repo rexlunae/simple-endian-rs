@@ -56,3 +56,33 @@ add_shift_ops!(LittleEndian<u128>);
 add_shift_ops!(LittleEndian<i128>);
 add_shift_ops!(LittleEndian<usize>);
 add_shift_ops!(LittleEndian<isize>);
+
+#[cfg(test)]
+mod tests {
+    extern crate test;
+    use crate::*;
+
+    #[test]
+    fn shl_be() {
+        let mut ne1 = 0xfee1;
+        let mut be1 = u64be::from(ne1);
+        be1 = be1 << 5.into();
+        ne1 = ne1 << 5;
+        be1 <<= 5.into();
+        ne1 <<= 5;
+        assert_eq!(ne1, be1.into());
+    }
+
+    #[test]
+    fn shr_be() {
+        let mut ne1 = 0xfee1;
+        let mut be1 = u64be::from(ne1);
+        be1 = be1 >> 5.into();
+        ne1 = ne1 >> 5;
+        be1 >>= 5.into();
+        ne1 >>= 5;
+        assert_eq!(ne1, be1.into());
+    }
+
+
+}

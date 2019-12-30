@@ -86,3 +86,24 @@ add_bitwise_ops!(LittleEndian<u128>);
 add_bitwise_ops!(LittleEndian<i128>);
 add_bitwise_ops!(LittleEndian<usize>);
 add_bitwise_ops!(LittleEndian<isize>);
+
+#[cfg(test)]
+mod tests {
+    extern crate test;
+    use crate::*;
+
+    #[test]
+    fn bit_and_test() {
+        let be1 = LittleEndian::<u64>::from(0x0f0);
+        let be2 = LittleEndian::<u64>::from(0xff0);
+        assert_eq!(0x0f0, u64::from(be1 & be2));
+    }
+
+    #[test]
+    fn unary_not_test() {
+        let be1 = BigEndian::<u16>::from(0x0f0);
+        assert_eq!(0xff0f, u16::from(!be1));
+    }
+
+
+}
