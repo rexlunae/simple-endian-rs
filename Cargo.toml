@@ -12,3 +12,6 @@ homepage = "https://github.com/rexlunae/simple-endian-rs"
 readme = "README.md"
 
 [dependencies]
+
+[dev-dependencies]
+memmap = "0.7"
