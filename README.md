@@ -76,7 +76,7 @@ This crate also provides implementations of a variety of useful traits for the t
 use simple_endian::*;
 
 let ip: BigEndian::<u32> = 0x0a00000a.into();
-let subnet_mask: BigEndian::from(0xff000000u32);
+let subnet_mask = BigEndian::from(0xff000000u32);
 
 let network = ip & subnet_mask;
 
