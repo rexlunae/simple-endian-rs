@@ -8,7 +8,7 @@ pub trait SpecificEndian<T> where Self: Into<T> + Clone + Copy {
 
 }
 
-/// A macro implementing SpecificEndian<T> for simple data types where big and little endian forms are the same.
+/// A macro implementing `SpecificEndian<T>` for simple data types where big and little endian forms are the same.
 macro_rules! make_specific_endian_single_byte {
     ($wrap_ty:ty) => {
 
@@ -34,7 +34,7 @@ make_specific_endian_single_byte!(i8);
 // If bool ends up being represented by something other than a byte, this might not work right.
 make_specific_endian_single_byte!(bool);
 
-/// A macro for implementing SpecificEndian<T> on types that have endian conversions built into Rust.  Currently, this is the primitive integer types.
+/// A macro for implementing `SpecificEndian<T>` on types that have endian conversions built into Rust.  Currently, this is the primitive integer types.
 macro_rules! make_specific_endian_integer {
     ($wrap_ty:ty) => {
 
@@ -187,6 +187,20 @@ macro_rules! make_primitive_type_from_le {
             }
         }
 
+    }
+}
+
+/// Allow conversion directly from `LittleEndian<T>` to `BigEndian<T>` without manually going through native endian.
+impl<T: SpecificEndian<T>> From<LittleEndian<T>> for BigEndian<T> {
+    fn from(v: LittleEndian<T>) -> BigEndian<T> {
+        BigEndian::<T>::from(v.to_native())
+    }
+}
+
+/// Allow conversion directly from `BigEndian<T>` to `LittleEndian<T>` without manually going through native endian.
+impl<T: SpecificEndian<T>> From<BigEndian<T>> for LittleEndian<T> {
+    fn from(v: BigEndian<T>) -> LittleEndian<T> {
+        LittleEndian::<T>::from(v.to_native())
     }
 }
 
@@ -356,6 +370,22 @@ mod tests {
         be1 &= BigEndian::from(0xff00);
         println!("{} {} {}", be1, be1.to_bits(), be1.to_native());
         assert_eq!(be1, 0xdd00.into());
+    }
+
+    #[test]
+    fn mixed_endian_big() {
+        let be = BigEndian::from(100);
+        let le = LittleEndian::from(200);
+        let me = be + le.into();
+        assert_eq!(me, 300.into());
+    }
+
+    #[test]
+    fn mixed_endian_little() {
+        let be = BigEndian::from(100);
+        let le = LittleEndian::from(200);
+        let me = le + be.into();
+        assert_eq!(me, 300.into());
     }
 
     #[test]
