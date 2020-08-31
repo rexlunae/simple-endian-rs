@@ -128,7 +128,7 @@ mod math_ops;
 /// Negations.
 mod neg_ops;
 
-/// General math operations.
+/// Formatter impls.
 mod formatting_ops;
 
 /// The shorthand types (e.g u64be, f32le, etc)
