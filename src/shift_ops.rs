@@ -1,9 +1,12 @@
 //! Bitshift operations, for integer types only.
 
+#[allow(unused_imports)]
 use std::ops::{Shl, ShlAssign, Shr, ShrAssign};
 
+#[allow(unused_imports)]
 use super::*;
 
+#[allow(unused_macros)]
 macro_rules! add_shift_ops {
     ($wrap_ty:ty) => {
         impl Shl for $wrap_ty {
@@ -33,31 +36,52 @@ macro_rules! add_shift_ops {
     }
 }
 
-add_shift_ops!(BigEndian<u8>);
-add_shift_ops!(BigEndian<i8>);
-add_shift_ops!(BigEndian<u16>);
-add_shift_ops!(BigEndian<i16>);
-add_shift_ops!(BigEndian<u32>);
-add_shift_ops!(BigEndian<i32>);
-add_shift_ops!(BigEndian<u64>);
-add_shift_ops!(BigEndian<i64>);
-add_shift_ops!(BigEndian<u128>);
-add_shift_ops!(BigEndian<i128>);
-add_shift_ops!(BigEndian<usize>);
-add_shift_ops!(BigEndian<isize>);
+#[cfg(feature = "big_endian")]
+mod be {
+    #[cfg(feature = "byte_impls")] 
+    mod bytes {
+        add_shift_ops!(BigEndian<u8>);
+        add_shift_ops!(BigEndian<i8>);        
+    }
 
-add_shift_ops!(LittleEndian<u8>);
-add_shift_ops!(LittleEndian<i8>);
-add_shift_ops!(LittleEndian<u16>);
-add_shift_ops!(LittleEndian<i16>);
-add_shift_ops!(LittleEndian<u32>);
-add_shift_ops!(LittleEndian<i32>);
-add_shift_ops!(LittleEndian<u64>);
-add_shift_ops!(LittleEndian<i64>);
-add_shift_ops!(LittleEndian<u128>);
-add_shift_ops!(LittleEndian<i128>);
-add_shift_ops!(LittleEndian<usize>);
-add_shift_ops!(LittleEndian<isize>);
+    #[cfg(feature = "integer_impls")]
+    mod integers {
+        add_shift_ops!(BigEndian<u16>);
+        add_shift_ops!(BigEndian<i16>);
+        add_shift_ops!(BigEndian<u32>);
+        add_shift_ops!(BigEndian<i32>);
+        add_shift_ops!(BigEndian<u64>);
+        add_shift_ops!(BigEndian<i64>);
+        add_shift_ops!(BigEndian<u128>);
+        add_shift_ops!(BigEndian<i128>);
+        add_shift_ops!(BigEndian<usize>);
+        add_shift_ops!(BigEndian<isize>);
+    }
+}
+
+
+#[cfg(feature = "big_endian")]
+mod le {
+    #[cfg(feature = "byte_impls")] 
+    mod bytes {
+        add_shift_ops!(LittleEndian<u8>);
+        add_shift_ops!(LittleEndian<i8>);     
+    }
+
+    #[cfg(feature = "integer_impls")]
+    mod integers {
+        add_shift_ops!(LittleEndian<u16>);
+        add_shift_ops!(LittleEndian<i16>);
+        add_shift_ops!(LittleEndian<u32>);
+        add_shift_ops!(LittleEndian<i32>);
+        add_shift_ops!(LittleEndian<u64>);
+        add_shift_ops!(LittleEndian<i64>);
+        add_shift_ops!(LittleEndian<u128>);
+        add_shift_ops!(LittleEndian<i128>);
+        add_shift_ops!(LittleEndian<usize>);
+        add_shift_ops!(LittleEndian<isize>);        
+    }
+}
 
 #[cfg(test)]
 mod tests {

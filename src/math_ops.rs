@@ -1,8 +1,11 @@
 //! The math operations.  These all have some cost because they require conversion to native endian.
+#[allow(unused_imports)]
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
+#[allow(unused_imports)]
 use super::*;
 
+#[allow(unused_macros)]
 macro_rules! add_math_ops {
     ($wrap_ty:ty) => {
         impl Add for $wrap_ty {
@@ -63,35 +66,63 @@ macro_rules! add_math_ops {
     }
 }
 
-add_math_ops!(BigEndian<u8>);
-add_math_ops!(BigEndian<i8>);
-add_math_ops!(BigEndian<u16>);
-add_math_ops!(BigEndian<i16>);
-add_math_ops!(BigEndian<u32>);
-add_math_ops!(BigEndian<i32>);
-add_math_ops!(BigEndian<u64>);
-add_math_ops!(BigEndian<i64>);
-add_math_ops!(BigEndian<u128>);
-add_math_ops!(BigEndian<i128>);
-add_math_ops!(BigEndian<usize>);
-add_math_ops!(BigEndian<isize>);
-add_math_ops!(BigEndian<f32>);
-add_math_ops!(BigEndian<f64>);
+#[cfg(feature = "big_endian")]
+mod be {
+    #[cfg(feature = "byte_impls")]
+    mod bytes {
+        add_math_ops!(BigEndian<u8>);
+        add_math_ops!(BigEndian<i8>);    
+    }
 
-add_math_ops!(LittleEndian<u8>);
-add_math_ops!(LittleEndian<i8>);
-add_math_ops!(LittleEndian<u16>);
-add_math_ops!(LittleEndian<i16>);
-add_math_ops!(LittleEndian<u32>);
-add_math_ops!(LittleEndian<i32>);
-add_math_ops!(LittleEndian<u64>);
-add_math_ops!(LittleEndian<i64>);
-add_math_ops!(LittleEndian<u128>);
-add_math_ops!(LittleEndian<i128>);
-add_math_ops!(LittleEndian<usize>);
-add_math_ops!(LittleEndian<isize>);
-add_math_ops!(LittleEndian<f32>);
-add_math_ops!(LittleEndian<f64>);
+    #[cfg(feature = "integer_impls")]
+    mod integers {
+        add_math_ops!(BigEndian<u16>);
+        add_math_ops!(BigEndian<i16>);
+        add_math_ops!(BigEndian<u32>);
+        add_math_ops!(BigEndian<i32>);
+        add_math_ops!(BigEndian<u64>);
+        add_math_ops!(BigEndian<i64>);
+        add_math_ops!(BigEndian<u128>);
+        add_math_ops!(BigEndian<i128>);
+        add_math_ops!(BigEndian<usize>);
+        add_math_ops!(BigEndian<isize>);    
+    }
+
+    #[cfg(feature = "float_impls")]
+    mod floats {
+        add_math_ops!(BigEndian<f32>);
+        add_math_ops!(BigEndian<f64>);    
+    }
+}
+
+#[cfg(feature = "little_endian")]
+mod le {
+    #[cfg(feature = "byte_impls")]
+    mod bytes {
+        add_math_ops!(LittleEndian<u8>);
+        add_math_ops!(LittleEndian<i8>);
+    }
+
+    #[cfg(feature = "integer_impls")]
+    mod integers {
+        add_math_ops!(LittleEndian<u16>);
+        add_math_ops!(LittleEndian<i16>);
+        add_math_ops!(LittleEndian<u32>);
+        add_math_ops!(LittleEndian<i32>);
+        add_math_ops!(LittleEndian<u64>);
+        add_math_ops!(LittleEndian<i64>);
+        add_math_ops!(LittleEndian<u128>);
+        add_math_ops!(LittleEndian<i128>);
+        add_math_ops!(LittleEndian<usize>);
+        add_math_ops!(LittleEndian<isize>);
+    }
+
+    #[cfg(feature = "float_impls")]
+    mod floats {
+        add_math_ops!(LittleEndian<f32>);
+        add_math_ops!(LittleEndian<f64>);
+    }
+}
 
 #[cfg(test)]
 mod tests {

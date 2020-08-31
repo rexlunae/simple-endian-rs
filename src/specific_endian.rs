@@ -8,87 +8,99 @@ pub trait SpecificEndian<T> where Self: Into<T> + Clone + Copy {
 
 }
 
-/// A macro implementing `SpecificEndian<T>` for simple data types where big and little endian forms are the same.
-macro_rules! make_specific_endian_single_byte {
-    ($wrap_ty:ty) => {
+#[cfg(feature = "byte_impls")] 
+mod byte_impls {
+    use super::*;
+    /// A macro implementing `SpecificEndian<T>` for simple data types where big and little endian forms are the same.
+    macro_rules! make_specific_endian_single_byte {
+        ($wrap_ty:ty) => {
 
-        impl SpecificEndian<$wrap_ty> for $wrap_ty {
-            fn to_big_endian(&self) -> Self {
-                *self
-            }
-            fn to_little_endian(&self) -> Self {
-                *self
-            }
-            fn from_big_endian(&self) -> Self {
-                *self
-            }
-            fn from_little_endian(&self) -> Self {
-                *self
+            impl SpecificEndian<$wrap_ty> for $wrap_ty {
+                fn to_big_endian(&self) -> Self {
+                    *self
+                }
+                fn to_little_endian(&self) -> Self {
+                    *self
+                }
+                fn from_big_endian(&self) -> Self {
+                    *self
+                }
+                fn from_little_endian(&self) -> Self {
+                    *self
+                }
             }
         }
     }
+
+    make_specific_endian_single_byte!(u8);
+    make_specific_endian_single_byte!(i8);
+    // If bool ends up being represented by something other than a byte, this might not work right.
+    make_specific_endian_single_byte!(bool);
 }
 
-make_specific_endian_single_byte!(u8);
-make_specific_endian_single_byte!(i8);
-// If bool ends up being represented by something other than a byte, this might not work right.
-make_specific_endian_single_byte!(bool);
+#[cfg(feature = "integer_impls")] 
+mod integer_impls {
+    use super::*;
+    /// A macro for implementing `SpecificEndian<T>` on types that have endian conversions built into Rust.  Currently, this is the primitive integer types.
+    macro_rules! make_specific_endian_integer {
+        ($wrap_ty:ty) => {
 
-/// A macro for implementing `SpecificEndian<T>` on types that have endian conversions built into Rust.  Currently, this is the primitive integer types.
-macro_rules! make_specific_endian_integer {
-    ($wrap_ty:ty) => {
-
-        impl SpecificEndian<$wrap_ty> for $wrap_ty {
-            fn to_big_endian(&self) -> Self {
-                self.to_be()
-            }
-            fn to_little_endian(&self) -> Self {
-                self.to_le()
-            }
-            fn from_big_endian(&self) -> Self {
-                Self::from_be(*self)
-            }
-            fn from_little_endian(&self) -> Self {
-                Self::from_le(*self)
+            impl SpecificEndian<$wrap_ty> for $wrap_ty {
+                fn to_big_endian(&self) -> Self {
+                    self.to_be()
+                }
+                fn to_little_endian(&self) -> Self {
+                    self.to_le()
+                }
+                fn from_big_endian(&self) -> Self {
+                    Self::from_be(*self)
+                }
+                fn from_little_endian(&self) -> Self {
+                    Self::from_le(*self)
+                }
             }
         }
     }
+
+    make_specific_endian_integer!(u16);
+    make_specific_endian_integer!(i16);
+    make_specific_endian_integer!(u32);
+    make_specific_endian_integer!(i32);
+    make_specific_endian_integer!(u64);
+    make_specific_endian_integer!(i64);
+    make_specific_endian_integer!(u128);
+    make_specific_endian_integer!(i128);
+    make_specific_endian_integer!(usize);
+    make_specific_endian_integer!(isize);
 }
 
-make_specific_endian_integer!(u16);
-make_specific_endian_integer!(i16);
-make_specific_endian_integer!(u32);
-make_specific_endian_integer!(i32);
-make_specific_endian_integer!(u64);
-make_specific_endian_integer!(i64);
-make_specific_endian_integer!(u128);
-make_specific_endian_integer!(i128);
-make_specific_endian_integer!(usize);
-make_specific_endian_integer!(isize);
+#[cfg(feature = "float_impls")] 
+mod float_impls {
+    use super::*;
+    /// Uses .from_bits() and .to_bits() to implement SpecificEndian<T> with Integer types.  Can be used with any type having these methods, but mainly for use with the floats.
+    macro_rules! make_specific_endian_float {
+        ($wrap_ty:ty) => {
 
-/// Uses .from_bits() and .to_bits() to implement SpecificEndian<T> with Integer types.  Can be used with any type having these methods, but mainly for use with the floats.
-macro_rules! make_specific_endian_float {
-    ($wrap_ty:ty) => {
-
-        impl SpecificEndian<$wrap_ty> for $wrap_ty {
-            fn to_big_endian(&self) -> Self {
-                Self::from_bits(self.to_bits().to_be())
-            }
-            fn to_little_endian(&self) -> Self {
-                Self::from_bits(self.to_bits().to_le())
-            }
-            fn from_big_endian(&self) -> Self {
-                Self::from_bits(self.to_bits().from_big_endian())
-            }
-            fn from_little_endian(&self) -> Self {
-                Self::from_bits(self.to_bits().from_little_endian())
+            impl SpecificEndian<$wrap_ty> for $wrap_ty {
+                fn to_big_endian(&self) -> Self {
+                    Self::from_bits(self.to_bits().to_be())
+                }
+                fn to_little_endian(&self) -> Self {
+                    Self::from_bits(self.to_bits().to_le())
+                }
+                fn from_big_endian(&self) -> Self {
+                    Self::from_bits(self.to_bits().from_big_endian())
+                }
+                fn from_little_endian(&self) -> Self {
+                    Self::from_bits(self.to_bits().from_little_endian())
+                }
             }
         }
     }
-}
 
-make_specific_endian_float!(f32);
-make_specific_endian_float!(f64);
+    make_specific_endian_float!(f32);
+    make_specific_endian_float!(f64);
+}
 
 /// A big-endian representation of type `T` that implements `SpecificEndian<T>`.  Data stored in the struct must be converted to big-endian using `::from()` or `.into()`.
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq)]
@@ -148,77 +160,97 @@ impl<T: SpecificEndian<T>> From<T> for LittleEndian<T> {
     }
 }
 
-// Rust's orphan trait rule prevents us from using a generic implementation on the primitive types, so we do this:
-macro_rules! make_primitive_type_from_be {
-    ($wrap_ty:ty) => {
+#[cfg(feature = "big_endian")] 
+mod big_endian_primatives {
+    #[allow(unused_imports)]
+    use super::*;
+    // Rust's orphan trait rule prevents us from using a generic implementation on the primitive types, so we do this:
+    #[allow(unused_macros)]
+    macro_rules! make_primitive_type_from_be {
+        ($wrap_ty:ty) => {
 
-        impl From<BigEndian<$wrap_ty>> for $wrap_ty {
-            fn from(v: BigEndian<$wrap_ty>) -> $wrap_ty {
-                v._v.from_big_endian()
+            impl From<BigEndian<$wrap_ty>> for $wrap_ty {
+                fn from(v: BigEndian<$wrap_ty>) -> $wrap_ty {
+                    v._v.from_big_endian()
+                }
             }
+
         }
-
     }
+
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(bool);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(u8);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(i8);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(u16);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(i16);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(u32);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(i32);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(u64);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(i64);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(u128);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(i128);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(usize);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(isize);
+    #[cfg(feature = "float_impls")] make_primitive_type_from_be!(f32);
+    #[cfg(feature = "float_impls")] make_primitive_type_from_be!(f64);
+    
 }
+    
 
-make_primitive_type_from_be!(bool);
-make_primitive_type_from_be!(u8);
-make_primitive_type_from_be!(i8);
-make_primitive_type_from_be!(u16);
-make_primitive_type_from_be!(i16);
-make_primitive_type_from_be!(u32);
-make_primitive_type_from_be!(i32);
-make_primitive_type_from_be!(u64);
-make_primitive_type_from_be!(i64);
-make_primitive_type_from_be!(u128);
-make_primitive_type_from_be!(i128);
-make_primitive_type_from_be!(usize);
-make_primitive_type_from_be!(isize);
-make_primitive_type_from_be!(f32);
-make_primitive_type_from_be!(f64);
+#[cfg(feature = "little_endian")] 
+mod little_endian_primatives {
+    #[allow(unused_imports)]
+    use super::*;
+    // Rust's orphan trait rule prevents us from using a generic implementation on the primitive types, so we do this:
+    #[allow(unused_macros)]
+    macro_rules! make_primitive_type_from_le {
+        ($wrap_ty:ty) => {
 
-// Rust's orphan trait rule prevents us from using a generic implementation on the primitive types, so we do this:
-macro_rules! make_primitive_type_from_le {
-    ($wrap_ty:ty) => {
-
-        impl From<LittleEndian<$wrap_ty>> for $wrap_ty {
-            fn from(v: LittleEndian<$wrap_ty>) -> $wrap_ty {
-                v._v.from_little_endian()
+            impl From<LittleEndian<$wrap_ty>> for $wrap_ty {
+                fn from(v: LittleEndian<$wrap_ty>) -> $wrap_ty {
+                    v._v.from_little_endian()
+                }
             }
+
         }
+    }
 
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(bool);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(u8);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(i8);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(u16);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(i16);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(u32);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(i32);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(u64);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(i64);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(u128);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(i128);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(usize);
+    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(isize);
+    #[cfg(feature = "float_impls")] make_primitive_type_from_le!(f32);
+    #[cfg(feature = "float_impls")] make_primitive_type_from_le!(f64);
+}
+
+
+#[cfg(feature = "both_endian")] 
+mod both_endian_primatives {
+    use super::*;
+    /// Allow conversion directly from `LittleEndian<T>` to `BigEndian<T>` without manually going through native endian.
+    impl<T: SpecificEndian<T>> From<LittleEndian<T>> for BigEndian<T> {
+        fn from(v: LittleEndian<T>) -> BigEndian<T> {
+            BigEndian::<T>::from(v.to_native())
+        }
+    }
+
+    /// Allow conversion directly from `BigEndian<T>` to `LittleEndian<T>` without manually going through native endian.
+    impl<T: SpecificEndian<T>> From<BigEndian<T>> for LittleEndian<T> {
+        fn from(v: BigEndian<T>) -> LittleEndian<T> {
+            LittleEndian::<T>::from(v.to_native())
+        }
     }
 }
 
-/// Allow conversion directly from `LittleEndian<T>` to `BigEndian<T>` without manually going through native endian.
-impl<T: SpecificEndian<T>> From<LittleEndian<T>> for BigEndian<T> {
-    fn from(v: LittleEndian<T>) -> BigEndian<T> {
-        BigEndian::<T>::from(v.to_native())
-    }
-}
-
-/// Allow conversion directly from `BigEndian<T>` to `LittleEndian<T>` without manually going through native endian.
-impl<T: SpecificEndian<T>> From<BigEndian<T>> for LittleEndian<T> {
-    fn from(v: BigEndian<T>) -> LittleEndian<T> {
-        LittleEndian::<T>::from(v.to_native())
-    }
-}
-
-make_primitive_type_from_le!(bool);
-make_primitive_type_from_le!(u8);
-make_primitive_type_from_le!(i8);
-make_primitive_type_from_le!(u16);
-make_primitive_type_from_le!(i16);
-make_primitive_type_from_le!(u32);
-make_primitive_type_from_le!(i32);
-make_primitive_type_from_le!(u64);
-make_primitive_type_from_le!(i64);
-make_primitive_type_from_le!(u128);
-make_primitive_type_from_le!(i128);
-make_primitive_type_from_le!(usize);
-make_primitive_type_from_le!(isize);
-make_primitive_type_from_le!(f32);
-make_primitive_type_from_le!(f64);
 
 #[cfg(test)]
 mod tests {

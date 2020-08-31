@@ -15,6 +15,7 @@ use std::ops::{BitAnd, Not, BitAndAssign, BitXor, BitXorAssign, BitOr, BitOrAssi
 use super::*;
 
 /// Implement the bitwise operations on the types.  These should be as fast in either endian, because they are endian-agnostic.
+#[allow(unused_macros)]
 macro_rules! add_bitwise_ops {
     ($wrap_ty:ty) => {
         impl BitAnd for $wrap_ty {
@@ -63,33 +64,53 @@ macro_rules! add_bitwise_ops {
     }
 }
 
-add_bitwise_ops!(BigEndian<bool>);
-add_bitwise_ops!(BigEndian<u8>);
-add_bitwise_ops!(BigEndian<i8>);
-add_bitwise_ops!(BigEndian<u16>);
-add_bitwise_ops!(BigEndian<i16>);
-add_bitwise_ops!(BigEndian<u32>);
-add_bitwise_ops!(BigEndian<i32>);
-add_bitwise_ops!(BigEndian<u64>);
-add_bitwise_ops!(BigEndian<i64>);
-add_bitwise_ops!(BigEndian<u128>);
-add_bitwise_ops!(BigEndian<i128>);
-add_bitwise_ops!(BigEndian<usize>);
-add_bitwise_ops!(BigEndian<isize>);
+#[cfg(feature = "byte_impls")]
+mod bitwise_integer_ops {
+    #[cfg(feature = "big_endian")]
+    mod be {
+        add_bitwise_ops!(BigEndian<bool>);
+        add_bitwise_ops!(BigEndian<u8>);
+        add_bitwise_ops!(BigEndian<i8>);
+    }
+    #[cfg(feature = "little_endian")]
+    mod le {
+        add_bitwise_ops!(LittleEndian<bool>);
+        add_bitwise_ops!(LittleEndian<u8>);
+        add_bitwise_ops!(LittleEndian<i8>);
+    }
+}
 
-add_bitwise_ops!(LittleEndian<bool>);
-add_bitwise_ops!(LittleEndian<u8>);
-add_bitwise_ops!(LittleEndian<i8>);
-add_bitwise_ops!(LittleEndian<u16>);
-add_bitwise_ops!(LittleEndian<i16>);
-add_bitwise_ops!(LittleEndian<u32>);
-add_bitwise_ops!(LittleEndian<i32>);
-add_bitwise_ops!(LittleEndian<u64>);
-add_bitwise_ops!(LittleEndian<i64>);
-add_bitwise_ops!(LittleEndian<u128>);
-add_bitwise_ops!(LittleEndian<i128>);
-add_bitwise_ops!(LittleEndian<usize>);
-add_bitwise_ops!(LittleEndian<isize>);
+
+#[cfg(feature = "integer_impls")]
+mod bitwise_integer_ops {
+    #[cfg(feature = "big_endian")]
+    mod be {
+        add_bitwise_ops!(BigEndian<u16>);
+        add_bitwise_ops!(BigEndian<i16>);
+        add_bitwise_ops!(BigEndian<u32>);
+        add_bitwise_ops!(BigEndian<i32>);
+        add_bitwise_ops!(BigEndian<u64>);
+        add_bitwise_ops!(BigEndian<i64>);
+        add_bitwise_ops!(BigEndian<u128>);
+        add_bitwise_ops!(BigEndian<i128>);
+        add_bitwise_ops!(BigEndian<usize>);
+        add_bitwise_ops!(BigEndian<isize>);
+    }
+
+    #[cfg(feature = "little_endian")]
+    mod le {
+        add_bitwise_ops!(LittleEndian<u16>);
+        add_bitwise_ops!(LittleEndian<i16>);
+        add_bitwise_ops!(LittleEndian<u32>);
+        add_bitwise_ops!(LittleEndian<i32>);
+        add_bitwise_ops!(LittleEndian<u64>);
+        add_bitwise_ops!(LittleEndian<i64>);
+        add_bitwise_ops!(LittleEndian<u128>);
+        add_bitwise_ops!(LittleEndian<i128>);
+        add_bitwise_ops!(LittleEndian<usize>);
+        add_bitwise_ops!(LittleEndian<isize>);  
+    }
+}
 
 #[cfg(test)]
 mod tests {
