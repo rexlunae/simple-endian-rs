@@ -20,10 +20,12 @@ macro_rules! add_neg_ops {
 
 #[cfg(feature = "big_endian")]
 mod be {
+    use super::*;
     #[cfg(feature = "byte_impls")] add_neg_ops!(BigEndian<i8>);
 
     #[cfg(feature = "integer_impls")]
     mod integers {
+        use super::*;
         add_neg_ops!(BigEndian<i16>);
         add_neg_ops!(BigEndian<i32>);
         add_neg_ops!(BigEndian<i64>);
@@ -33,6 +35,7 @@ mod be {
 
     #[cfg(feature = "float_impls")]
     mod floats {
+        use super::*;
         add_neg_ops!(BigEndian<f32>);
         add_neg_ops!(BigEndian<f64>);
     }
@@ -41,10 +44,12 @@ mod be {
 
 #[cfg(feature = "little_endian")]
 mod le {
+    use super::*;
     #[cfg(feature = "byte_impls")] add_neg_ops!(LittleEndian<i8>);
 
     #[cfg(feature = "integer_impls")]
     mod integers {
+        use super::*;
         add_neg_ops!(LittleEndian<i16>);
         add_neg_ops!(LittleEndian<i32>);
         add_neg_ops!(LittleEndian<i64>);
@@ -54,6 +59,7 @@ mod le {
 
     #[cfg(feature = "float_impls")]
     mod floats {
+        use super::*;
         add_neg_ops!(LittleEndian<f32>);
         add_neg_ops!(LittleEndian<f64>);
     }

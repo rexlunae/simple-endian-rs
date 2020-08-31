@@ -21,13 +21,16 @@ macro_rules! add_equality_ops {
 // The floats can only have PartialOrd, not Ord, because they only have PartialEq and not Eq.
 #[cfg(feature = "float_impls")]
 mod float_comps {
+    use super::*;
     #[cfg(feature = "big_endian")]
     mod be {
+        use super::*;
         add_equality_ops!(BigEndian<f32>);
         add_equality_ops!(BigEndian<f64>);
     }
     #[cfg(feature = "little_endian")]
     mod le {
+        use super::*;
         add_equality_ops!(LittleEndian<f32>);
         add_equality_ops!(LittleEndian<f64>);
     }
@@ -52,8 +55,10 @@ macro_rules! add_full_equality_ops {
 // We have to separate Ord because f32/64 don't have Eq trait.
 #[cfg(feature = "integer_impls")]
 mod integer_comps {
+    use super::*;
     #[cfg(feature = "big_endian")]
     mod be {
+        use super::*;
         add_full_equality_ops!(BigEndian<u16>);
         add_full_equality_ops!(BigEndian<i16>);
         add_full_equality_ops!(BigEndian<u32>);
@@ -67,6 +72,7 @@ mod integer_comps {
     }
     #[cfg(feature = "little_endian")]
     mod le {
+        use super::*;
         add_full_equality_ops!(LittleEndian<u16>);
         add_full_equality_ops!(LittleEndian<i16>);
         add_full_equality_ops!(LittleEndian<u32>);
@@ -82,14 +88,17 @@ mod integer_comps {
 
 #[cfg(feature = "byte_impls")]
 mod byte_comps {
+    use super::*;
     #[cfg(feature = "big_endian")]
     mod be {
+        use super::*;
         add_full_equality_ops!(BigEndian<bool>);
         add_full_equality_ops!(BigEndian<u8>);
         add_full_equality_ops!(BigEndian<i8>);
     }
     #[cfg(feature = "little_endian")]
     mod le {
+        use super::*;
         add_full_equality_ops!(LittleEndian<bool>);
         add_full_equality_ops!(LittleEndian<u8>);
         add_full_equality_ops!(LittleEndian<i8>);

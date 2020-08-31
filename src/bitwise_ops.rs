@@ -65,15 +65,18 @@ macro_rules! add_bitwise_ops {
 }
 
 #[cfg(feature = "byte_impls")]
-mod bitwise_integer_ops {
+mod bitwise_byte_ops {
+    use super::*;
     #[cfg(feature = "big_endian")]
     mod be {
+        use super::*;
         add_bitwise_ops!(BigEndian<bool>);
         add_bitwise_ops!(BigEndian<u8>);
         add_bitwise_ops!(BigEndian<i8>);
     }
     #[cfg(feature = "little_endian")]
     mod le {
+        use super::*;
         add_bitwise_ops!(LittleEndian<bool>);
         add_bitwise_ops!(LittleEndian<u8>);
         add_bitwise_ops!(LittleEndian<i8>);
@@ -83,8 +86,10 @@ mod bitwise_integer_ops {
 
 #[cfg(feature = "integer_impls")]
 mod bitwise_integer_ops {
+    use super::*;
     #[cfg(feature = "big_endian")]
     mod be {
+        use super::*;
         add_bitwise_ops!(BigEndian<u16>);
         add_bitwise_ops!(BigEndian<i16>);
         add_bitwise_ops!(BigEndian<u32>);
@@ -99,6 +104,7 @@ mod bitwise_integer_ops {
 
     #[cfg(feature = "little_endian")]
     mod le {
+        use super::*;
         add_bitwise_ops!(LittleEndian<u16>);
         add_bitwise_ops!(LittleEndian<i16>);
         add_bitwise_ops!(LittleEndian<u32>);

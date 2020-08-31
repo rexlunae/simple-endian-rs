@@ -68,14 +68,17 @@ macro_rules! add_math_ops {
 
 #[cfg(feature = "big_endian")]
 mod be {
+    use super::*;
     #[cfg(feature = "byte_impls")]
     mod bytes {
+        use super::*;
         add_math_ops!(BigEndian<u8>);
         add_math_ops!(BigEndian<i8>);    
     }
 
     #[cfg(feature = "integer_impls")]
     mod integers {
+        use super::*;
         add_math_ops!(BigEndian<u16>);
         add_math_ops!(BigEndian<i16>);
         add_math_ops!(BigEndian<u32>);
@@ -90,6 +93,7 @@ mod be {
 
     #[cfg(feature = "float_impls")]
     mod floats {
+        use super::*;
         add_math_ops!(BigEndian<f32>);
         add_math_ops!(BigEndian<f64>);    
     }
@@ -97,14 +101,17 @@ mod be {
 
 #[cfg(feature = "little_endian")]
 mod le {
+    use super::*;
     #[cfg(feature = "byte_impls")]
     mod bytes {
+        use super::*;
         add_math_ops!(LittleEndian<u8>);
         add_math_ops!(LittleEndian<i8>);
     }
 
     #[cfg(feature = "integer_impls")]
     mod integers {
+        use super::*;
         add_math_ops!(LittleEndian<u16>);
         add_math_ops!(LittleEndian<i16>);
         add_math_ops!(LittleEndian<u32>);
@@ -119,6 +126,7 @@ mod le {
 
     #[cfg(feature = "float_impls")]
     mod floats {
+        use super::*;
         add_math_ops!(LittleEndian<f32>);
         add_math_ops!(LittleEndian<f64>);
     }

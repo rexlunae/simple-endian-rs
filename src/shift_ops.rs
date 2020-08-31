@@ -38,14 +38,17 @@ macro_rules! add_shift_ops {
 
 #[cfg(feature = "big_endian")]
 mod be {
+    use super::*;
     #[cfg(feature = "byte_impls")] 
     mod bytes {
+        use super::*;
         add_shift_ops!(BigEndian<u8>);
         add_shift_ops!(BigEndian<i8>);        
     }
 
     #[cfg(feature = "integer_impls")]
     mod integers {
+        use super::*;
         add_shift_ops!(BigEndian<u16>);
         add_shift_ops!(BigEndian<i16>);
         add_shift_ops!(BigEndian<u32>);
@@ -62,14 +65,17 @@ mod be {
 
 #[cfg(feature = "big_endian")]
 mod le {
+    use super::*;
     #[cfg(feature = "byte_impls")] 
     mod bytes {
+        use super::*;
         add_shift_ops!(LittleEndian<u8>);
         add_shift_ops!(LittleEndian<i8>);     
     }
 
     #[cfg(feature = "integer_impls")]
     mod integers {
+        use super::*;
         add_shift_ops!(LittleEndian<u16>);
         add_shift_ops!(LittleEndian<i16>);
         add_shift_ops!(LittleEndian<u32>);
