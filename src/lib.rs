@@ -114,22 +114,22 @@ mod specific_endian;
 pub use specific_endian::*;
 
 /// Bitwise operations.  These should be equally fast in any endian.
-mod bitwise_ops;
+#[cfg(feature = "bitwise")] mod bitwise_ops;
 
 /// Ops for comparisons and ordering.
-mod comparison_ops;
+#[cfg(feature = "comparisons")] mod comparison_ops;
 
 /// Shift operations.
-mod shift_ops;
+#[cfg(feature = "shift_ops")] mod shift_ops;
 
 /// General math operations.
-mod math_ops;
+#[cfg(feature = "math_ops")] mod math_ops;
 
 /// Negations.
-mod neg_ops;
+#[cfg(feature = "neg_ops")] mod neg_ops;
 
 /// Formatter impls.
-mod formatting_ops;
+#[cfg(feature = "format")] mod formatting_ops;
 
 /// The shorthand types (e.g u64be, f32le, etc)
 mod shorthand_types;

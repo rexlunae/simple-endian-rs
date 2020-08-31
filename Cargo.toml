@@ -1,6 +1,6 @@
 [package]
 name = "simple_endian"
-version = "0.1.7"
+version = "0.1.8"
 authors = ["Rex Lunae <rexlunae@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -15,3 +15,12 @@ readme = "README.md"
 
 [dev-dependencies]
 memmap = "0.7"
+
+[features]
+default = ["bitwise", "comparisons", "format", "math_ops", "neg_ops", "shift_ops"]
+bitwise = []
+comparisons = []
+format = []
+math_ops= []
+neg_ops = []
+shift_ops = []
