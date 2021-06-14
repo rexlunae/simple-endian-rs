@@ -1,6 +1,6 @@
 //! The math operations.  These all have some cost because they require conversion to native endian.
 #[allow(unused_imports)]
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 #[allow(unused_imports)]
 use super::*;
@@ -62,8 +62,7 @@ macro_rules! add_math_ops {
                 *self = *self - other;
             }
         }
-
-    }
+    };
 }
 
 #[cfg(feature = "big_endian")]
@@ -73,7 +72,7 @@ mod be {
     mod bytes {
         use super::*;
         add_math_ops!(BigEndian<u8>);
-        add_math_ops!(BigEndian<i8>);    
+        add_math_ops!(BigEndian<i8>);
     }
 
     #[cfg(feature = "integer_impls")]
@@ -88,14 +87,14 @@ mod be {
         add_math_ops!(BigEndian<u128>);
         add_math_ops!(BigEndian<i128>);
         add_math_ops!(BigEndian<usize>);
-        add_math_ops!(BigEndian<isize>);    
+        add_math_ops!(BigEndian<isize>);
     }
 
     #[cfg(feature = "float_impls")]
     mod floats {
         use super::*;
         add_math_ops!(BigEndian<f32>);
-        add_math_ops!(BigEndian<f64>);    
+        add_math_ops!(BigEndian<f64>);
     }
 }
 
@@ -171,6 +170,4 @@ mod tests {
         ne1 /= 10.0;
         assert_eq!(ne1, be1.into());
     }
-
-
 }

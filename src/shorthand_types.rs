@@ -2,15 +2,15 @@
 
 #![allow(non_camel_case_types)]
 use super::*;
-/// Shorthand for `LittleEndian<u16>` 
+/// Shorthand for `LittleEndian<u16>`
 pub type u16le = LittleEndian<u16>;
-/// Shorthand for `BigEndian<u16>` 
+/// Shorthand for `BigEndian<u16>`
 pub type u16be = BigEndian<u16>;
-/// Shorthand for `LittleEndian<u32>` 
+/// Shorthand for `LittleEndian<u32>`
 pub type u32le = LittleEndian<u32>;
 /// Shorthand for `BigEndian<u32>`
 pub type u32be = BigEndian<u32>;
-/// Shorthand for `LittleEndian<u64>` 
+/// Shorthand for `LittleEndian<u64>`
 pub type u64le = LittleEndian<u64>;
 /// Shorthand for `BigEndian<u64>`
 pub type u64be = BigEndian<u64>;
