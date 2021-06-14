@@ -1,5 +1,5 @@
 //! Bitwise operations.  These should be equally fast in either endian.
-//! 
+//!
 //! ```rust
 //! // These should all be basically zero-cost:
 //! use simple_endian::*;
@@ -10,7 +10,7 @@
 //! a ^= 0x5555555.into();
 //! ```
 
-use std::ops::{BitAnd, Not, BitAndAssign, BitXor, BitXorAssign, BitOr, BitOrAssign};
+use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
 
 use super::*;
 
@@ -21,11 +21,13 @@ macro_rules! add_bitwise_ops {
         impl BitAnd for $wrap_ty {
             type Output = Self;
             fn bitand(self, rhs: Self) -> Self::Output {
-                Self{_v: self._v & rhs._v}
+                Self {
+                    _v: self._v & rhs._v,
+                }
             }
         }
         impl BitAndAssign for $wrap_ty {
-           fn bitand_assign(&mut self, rhs: Self) {
+            fn bitand_assign(&mut self, rhs: Self) {
                 *self = *self & rhs
             }
         }
@@ -34,7 +36,9 @@ macro_rules! add_bitwise_ops {
             type Output = Self;
 
             fn bitxor(self, rhs: Self) -> Self::Output {
-                Self{_v: self._v ^ rhs._v}
+                Self {
+                    _v: self._v ^ rhs._v,
+                }
             }
         }
         impl BitXorAssign for $wrap_ty {
@@ -46,7 +50,9 @@ macro_rules! add_bitwise_ops {
             type Output = Self;
 
             fn bitor(self, rhs: Self) -> Self {
-                Self{_v: self._v | rhs._v}
+                Self {
+                    _v: self._v | rhs._v,
+                }
             }
         }
         impl BitOrAssign for $wrap_ty {
@@ -58,10 +64,10 @@ macro_rules! add_bitwise_ops {
             type Output = Self;
 
             fn not(self) -> Self::Output {
-                Self{_v: !self._v}
+                Self { _v: !self._v }
             }
-        }        
-    }
+        }
+    };
 }
 
 #[cfg(feature = "byte_impls")]
@@ -82,7 +88,6 @@ mod bitwise_byte_ops {
         add_bitwise_ops!(LittleEndian<i8>);
     }
 }
-
 
 #[cfg(feature = "integer_impls")]
 mod bitwise_integer_ops {
@@ -114,7 +119,7 @@ mod bitwise_integer_ops {
         add_bitwise_ops!(LittleEndian<u128>);
         add_bitwise_ops!(LittleEndian<i128>);
         add_bitwise_ops!(LittleEndian<usize>);
-        add_bitwise_ops!(LittleEndian<isize>);  
+        add_bitwise_ops!(LittleEndian<isize>);
     }
 }
 
@@ -135,6 +140,4 @@ mod tests {
         let be1 = BigEndian::<u16>::from(0x0f0);
         assert_eq!(0xff0f, u16::from(!be1));
     }
-
-
 }

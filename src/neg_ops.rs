@@ -1,6 +1,6 @@
 //! Module adding negation to the types where it's possible.
 #[allow(unused_imports)]
-use std::ops::Neg;
+use core::ops::Neg;
 
 #[allow(unused_imports)]
 use super::*;
@@ -15,13 +15,14 @@ macro_rules! add_neg_ops {
                 Self::from(-self.to_native())
             }
         }
-    }
+    };
 }
 
 #[cfg(feature = "big_endian")]
 mod be {
     use super::*;
-    #[cfg(feature = "byte_impls")] add_neg_ops!(BigEndian<i8>);
+    #[cfg(feature = "byte_impls")]
+    add_neg_ops!(BigEndian<i8>);
 
     #[cfg(feature = "integer_impls")]
     mod integers {
@@ -41,11 +42,11 @@ mod be {
     }
 }
 
-
 #[cfg(feature = "little_endian")]
 mod le {
     use super::*;
-    #[cfg(feature = "byte_impls")] add_neg_ops!(LittleEndian<i8>);
+    #[cfg(feature = "byte_impls")]
+    add_neg_ops!(LittleEndian<i8>);
 
     #[cfg(feature = "integer_impls")]
     mod integers {
@@ -65,7 +66,6 @@ mod le {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     extern crate test;
@@ -73,16 +73,11 @@ mod tests {
     #[test]
     fn negate() {
         let be1 = BigEndian::from(1);
-        let be2 = -be1;
-        println!("{}, {}", be1, be2);
-        assert_eq!(be2, i32be::from(-1));
+        assert_eq!(-be1, i32be::from(-1));
     }
     #[test]
     fn negate_fp() {
         let be1 = BigEndian::from(1.0);
-        let be2 = -be1;
-        println!("{}, {}", be1, be2);
-        assert_eq!(be2, f64be::from(-1.0));
+        assert_eq!(-be1, f64be::from(-1.0));
     }
-
 }

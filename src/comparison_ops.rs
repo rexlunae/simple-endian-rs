@@ -1,6 +1,6 @@
 //! Comparison ops.
 #[allow(unused_imports)]
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 
 #[allow(unused_imports)]
 use super::*;
@@ -14,8 +14,7 @@ macro_rules! add_equality_ops {
                 self.to_native().partial_cmp(&other.to_native())
             }
         }
-    
-    }
+    };
 }
 
 // The floats can only have PartialOrd, not Ord, because they only have PartialEq and not Eq.
@@ -36,8 +35,6 @@ mod float_comps {
     }
 }
 
-
-
 /// For types that implement Eq.
 #[allow(unused_macros)]
 macro_rules! add_full_equality_ops {
@@ -48,9 +45,8 @@ macro_rules! add_full_equality_ops {
             }
         }
         add_equality_ops!($wrap_ty);
-    }
+    };
 }
-
 
 // We have to separate Ord because f32/64 don't have Eq trait.
 #[cfg(feature = "integer_impls")]
@@ -105,9 +101,6 @@ mod byte_comps {
     }
 }
 
-
-
-
 #[cfg(test)]
 mod tests {
     extern crate test;
@@ -147,5 +140,4 @@ mod tests {
         let be2 = BigEndian::from(6234.5678);
         assert_eq!(true, be1 < be2);
     }
-
 }
