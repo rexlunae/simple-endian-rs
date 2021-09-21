@@ -58,9 +58,9 @@ foo = 7;     // Will not compile without .into().
 ```
 
 
-## Diving in deeper
+## How it works
 
-At its core, this crate centers around one trait, called `SpecificEndian<T>`, and the generic structs `BigEndian<T>` and `LittleEndian<T>`.  `SpecificEndian<T>` is required to make `BigEndian<T>` and `LittleEndian<T>` structs.  Any struct that implements `SpecificEndian`, even if it handles endianness in unusual ways, can be assigned `BigEndian` and `LittleEndian` variants using the structs in this crate, the main possibly difficult limitation being that they need to use the same underlying structure.  In fact, `u64be` is just a type alias for `BigEndian<u64>`.  There is no memory footprint added by the `BigEndian<T>` and `LittleEndian<T>` structs, in fact, in most cases it uses the type T to store the data.  The only purpose of the structs is to tag them for Rust's type system to enforce correct accesses.  This means that it can be used directly within larger structs, and then the entire struct can be written to disk, send over a network socket, and otherwise shared between processor architectures using the same code regardless of host endian using declarative logic without any conditionals.
+At its csuppoore, this crate centers around one trait, called `SpecificEndian<T>`, and the generic structs `BigEndian<T>` and `LittleEndian<T>`.  `SpecificEndian<T>` is required to make `BigEndian<T>` and `LittleEndian<T>` structs.  Any struct that implements `SpecificEndian`, even if it handles endianness in unusual ways, can be assigned `BigEndian` and `LittleEndian` variants using the structs in this crate, the main possibly difficult limitation being that they need to use the same underlying structure.  In fact, `u64be` is just a type alias for `BigEndian<u64>`.  There is no memory footprint added by the `BigEndian<T>` and `LittleEndian<T>` structs, in fact, in most cases it uses the type T to store the data.  The only purpose of the structs is to tag them for Rust's type system to enforce correct accesses.  This means that it can be used directly within larger structs, and then the entire struct can be written to disk, send over a network socket, and otherwise shared between processor architectures using the same code regardless of host endian using declarative logic without any conditionals.
 
 This crate provides `SpecificEndian` implementations for most of the built-in types in Rust, including:
 
@@ -68,7 +68,7 @@ This crate provides `SpecificEndian` implementations for most of the built-in ty
 * The multi-byte integers: `u16`, `u32`, `u64`, `u128`, `usize`, `i16`, `i32`, `i64`, `i128`, `isize`
 * The floats: `f32`, `f64`.
 
-At the time of this writing, the only type that doesn't have an implementation is char, and this is because some values of char that would be possible from the binary representation would cause a panic.  Usually, you wouldn't want to store a char directly anyway, so this is probably a small limitation.
+At the time of this writing, the only common built-in type that doesn't have an implementation is char, and this is because some values of char that would be possible from the binary representation would cause a panic.  Usually, you wouldn't want to store a char directly anyway, so this is probably a small limitation.
 
 This crate also provides implementations of a variety of useful traits for the types that it wraps, including boolean logic implementations for the integer types, including bools.  This allows most boolean logic operations to be performed without any endian conversions using ordinary operators.  You are required to use same-endian operands, however, like this:
 
@@ -106,6 +106,27 @@ Note that the println! will interpret the values in native endian.
 
 And finally, this crate implements a number of traits that allow most of the basic arithmetic operators to be used on the Big- and LittleEndian variants of all of the types, where appropriate, including for the floats.  There is a certain amount of overhead to this, since each operation requires at least one and often two or more endian conversions, however, since this crate aims to minimize the cost of writing portable code, they are provided to reduce friction to adoption.  If you are writing code that is extremely sensitive to such overhead, it might make sense to convert to native endian, do your operations, and then store back in the specified endian using `into()` or similar.  That said, the overhead is often very small, and Rust's optimizer is very good, so I would encourage you to do some actual benchmarking before taking an unergonomic approach to your code.  There are too many traits implemented to list them here, so I recommend consulting [the documentation](https://docs.rs/simple_endian/).  Alternatively, you could just try what you want to do, and see if it compiles.  It shouldn't ever allow you to compile something that doesn't handle endianness correctly unless you work pretty hard at it.
 
+## Features
+
+By default, this crate will compile with all supported features. Although this means that in most cases, almost anything you would want to do would work out of the box, in practical terms, this can make the crate rather large. To avoid bloat, it might be best to set `default-features = false` in your "Cargo.toml", and add back in the features you actually need.
+
+The two most useful features are probably the ones that control support for big- and little- endians:
+
+* `big_endian`
+* `little_endian`
+
+Others are broken into categories:
+* Operations types - These can make the use of `SpecificEndian<T>` types more ergonimic, and allow for some amount of optimization by avoiding unnecessary convertions to and from native endian.
+    * `bitwise`
+    * `comparisons`
+    * `math_ops`
+    * `neg_ops`
+    * `shift_ops`
+* Support for formatting in the `format` feature.
+* Support for different types
+    * `float_impls`
+    * `integer_impls`
+    * `byte_impls`
 ## Performance
 
 For the most part, the performance of the endian operations are extremely fast, even compared to native operations.  The main exception is the std::fmt implementations, which are in some cases quite a bit slower than default.  I'm open to suggestions on how to improve the performance, but it might be worth using .to_native() instead of directly printing the wrapped types in performance-critical contexts.
