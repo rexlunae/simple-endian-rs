@@ -256,7 +256,7 @@ mod both_endian_primatives {
 mod tests {
     extern crate test;
     use crate::*;
-    use std::mem::size_of;
+    use core::mem::size_of;
 
     #[test]
     fn declare_all() {

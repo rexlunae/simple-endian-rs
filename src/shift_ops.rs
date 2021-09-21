@@ -1,7 +1,7 @@
 //! Bitshift operations, for integer types only.
 
 #[allow(unused_imports)]
-use std::ops::{Shl, ShlAssign, Shr, ShrAssign};
+use core::ops::{Shl, ShlAssign, Shr, ShrAssign};
 
 #[allow(unused_imports)]
 use super::*;

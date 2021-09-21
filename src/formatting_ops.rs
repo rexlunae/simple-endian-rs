@@ -1,5 +1,5 @@
 //! Implementations for formatting the various types.
-use std::fmt::{Formatter, Result, UpperHex, LowerHex, Octal, Binary, Display};
+use core::fmt::{Formatter, Result, UpperHex, LowerHex, Octal, Binary, Display};
 
 use super::*;
 

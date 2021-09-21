@@ -1,6 +1,6 @@
 //! The math operations.  These all have some cost because they require conversion to native endian.
 #[allow(unused_imports)]
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 #[allow(unused_imports)]
 use super::*;

@@ -1,6 +1,6 @@
 //! Comparison ops.
 #[allow(unused_imports)]
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 
 #[allow(unused_imports)]
 use super::*;

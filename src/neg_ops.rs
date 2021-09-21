@@ -1,6 +1,6 @@
 //! Module adding negation to the types where it's possible.
 #[allow(unused_imports)]
-use std::ops::Neg;
+use core::ops::Neg;
 
 #[allow(unused_imports)]
 use super::*;

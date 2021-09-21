@@ -10,7 +10,7 @@
 //! a ^= 0x5555555.into();
 //! ```
 
-use std::ops::{BitAnd, Not, BitAndAssign, BitXor, BitXorAssign, BitOr, BitOrAssign};
+use core::ops::{BitAnd, Not, BitAndAssign, BitXor, BitXorAssign, BitOr, BitOrAssign};
 
 use super::*;
 
