@@ -18,7 +18,7 @@ memmap = "0.7"
 
 [features]
 default = ["bitwise", "comparisons", "format", "math_ops",
-    "neg_ops", "shift_ops", "both_endian", "float_impls", "integer_impls", "byte_impls"]
+    "neg_ops", "shift_ops", "both_endian", "float_impls", "integer_impls", "byte_impls", "std"]
 bitwise = ["integer_impls"]
 comparisons = []
 format = []
@@ -31,3 +31,4 @@ both_endian = ["big_endian", "little_endian"]
 float_impls = ["integer_impls"]
 integer_impls = []
 byte_impls = []
+std = []
