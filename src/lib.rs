@@ -1,3 +1,4 @@
+#![cfg_attr(not(feature = "std"), no_std)]
 #![feature(test)]
 //! Many byte-order-handling libraries focus on providing code to convert to and from big- or little-endian.  However,
 //! this requires users of those libraries to use a lot of explicit logic.  This library uses the Rust type system to
