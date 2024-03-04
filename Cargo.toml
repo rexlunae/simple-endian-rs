@@ -1,8 +1,8 @@
 [package]
 name = "simple_endian"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Rex Lunae <rexlunae@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 description = "A create for defining endianness within your data structures, to make handling portable data structures simpler."
 repository = "https://github.com/rexlunae/simple-endian-rs"
@@ -11,10 +11,13 @@ documentation = "https://docs.rs/simple_endian/"
 homepage = "https://github.com/rexlunae/simple-endian-rs"
 readme = "README.md"
 
-[dependencies]
+[[bench]]
+name = "benches"
+harness = false
 
 [dev-dependencies]
 memmap = "0.7"
+bencher = "0.1.5"
 
 [features]
 default = ["bitwise", "comparisons", "format", "math_ops",
