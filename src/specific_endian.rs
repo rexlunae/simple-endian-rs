@@ -8,7 +8,7 @@ pub trait SpecificEndian<T> where Self: Into<T> + Clone + Copy {
 
 }
 
-#[cfg(feature = "byte_impls")] 
+#[cfg(feature = "byte_impls")]
 mod byte_impls {
     use super::*;
     /// A macro implementing `SpecificEndian<T>` for simple data types where big and little endian forms are the same.
@@ -38,7 +38,7 @@ mod byte_impls {
     make_specific_endian_single_byte!(bool);
 }
 
-#[cfg(feature = "integer_impls")] 
+#[cfg(feature = "integer_impls")]
 mod integer_impls {
     use super::*;
     /// A macro for implementing `SpecificEndian<T>` on types that have endian conversions built into Rust.  Currently, this is the primitive integer types.
@@ -74,7 +74,7 @@ mod integer_impls {
     make_specific_endian_integer!(isize);
 }
 
-#[cfg(feature = "float_impls")] 
+#[cfg(feature = "float_impls")]
 mod float_impls {
     use super::*;
     /// Uses .from_bits() and .to_bits() to implement SpecificEndian<T> with Integer types.  Can be used with any type having these methods, but mainly for use with the floats.
@@ -160,7 +160,7 @@ impl<T: SpecificEndian<T>> From<T> for LittleEndian<T> {
     }
 }
 
-#[cfg(feature = "big_endian")] 
+#[cfg(feature = "big_endian")]
 mod big_endian_primatives {
     #[allow(unused_imports)]
     use super::*;
@@ -193,11 +193,11 @@ mod big_endian_primatives {
     #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(isize);
     #[cfg(feature = "float_impls")] make_primitive_type_from_be!(f32);
     #[cfg(feature = "float_impls")] make_primitive_type_from_be!(f64);
-    
-}
-    
 
-#[cfg(feature = "little_endian")] 
+}
+
+
+#[cfg(feature = "little_endian")]
 mod little_endian_primatives {
     #[allow(unused_imports)]
     use super::*;
@@ -233,7 +233,7 @@ mod little_endian_primatives {
 }
 
 
-#[cfg(feature = "both_endian")] 
+#[cfg(feature = "both_endian")]
 mod both_endian_primatives {
     use super::*;
     /// Allow conversion directly from `LittleEndian<T>` to `BigEndian<T>` without manually going through native endian.
@@ -254,7 +254,6 @@ mod both_endian_primatives {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
     use crate::*;
     use core::mem::size_of;
 
@@ -465,4 +464,3 @@ mod tests {
     }
 
 }
-

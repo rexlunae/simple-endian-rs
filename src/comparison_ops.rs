@@ -14,7 +14,7 @@ macro_rules! add_equality_ops {
                 self.to_native().partial_cmp(&other.to_native())
             }
         }
-    
+
     }
 }
 
@@ -110,7 +110,6 @@ mod byte_comps {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
     use crate::*;
 
     #[test]

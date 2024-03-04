@@ -73,7 +73,7 @@ mod be {
     mod bytes {
         use super::*;
         add_math_ops!(BigEndian<u8>);
-        add_math_ops!(BigEndian<i8>);    
+        add_math_ops!(BigEndian<i8>);
     }
 
     #[cfg(feature = "integer_impls")]
@@ -88,14 +88,14 @@ mod be {
         add_math_ops!(BigEndian<u128>);
         add_math_ops!(BigEndian<i128>);
         add_math_ops!(BigEndian<usize>);
-        add_math_ops!(BigEndian<isize>);    
+        add_math_ops!(BigEndian<isize>);
     }
 
     #[cfg(feature = "float_impls")]
     mod floats {
         use super::*;
         add_math_ops!(BigEndian<f32>);
-        add_math_ops!(BigEndian<f64>);    
+        add_math_ops!(BigEndian<f64>);
     }
 }
 
@@ -134,7 +134,6 @@ mod le {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
     use crate::*;
 
     #[test]

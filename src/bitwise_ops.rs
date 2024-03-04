@@ -1,5 +1,5 @@
 //! Bitwise operations.  These should be equally fast in either endian.
-//! 
+//!
 //! ```rust
 //! // These should all be basically zero-cost:
 //! use simple_endian::*;
@@ -60,7 +60,7 @@ macro_rules! add_bitwise_ops {
             fn not(self) -> Self::Output {
                 Self{_v: !self._v}
             }
-        }        
+        }
     }
 }
 
@@ -114,13 +114,12 @@ mod bitwise_integer_ops {
         add_bitwise_ops!(LittleEndian<u128>);
         add_bitwise_ops!(LittleEndian<i128>);
         add_bitwise_ops!(LittleEndian<usize>);
-        add_bitwise_ops!(LittleEndian<isize>);  
+        add_bitwise_ops!(LittleEndian<isize>);
     }
 }
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
     use crate::*;
 
     #[test]

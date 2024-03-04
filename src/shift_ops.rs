@@ -11,7 +11,7 @@ macro_rules! add_shift_ops {
     ($wrap_ty:ty) => {
         impl Shl for $wrap_ty {
             type Output = Self;
-        
+
             fn shl(self, other: Self) -> Self {
                 Self::from(self.to_native() << other.to_native())
             }
@@ -23,7 +23,7 @@ macro_rules! add_shift_ops {
         }
         impl Shr for $wrap_ty {
             type Output = Self;
-        
+
             fn shr(self, other: Self) -> Self {
                 Self::from(self.to_native() >> other.to_native())
             }
@@ -39,11 +39,11 @@ macro_rules! add_shift_ops {
 #[cfg(feature = "big_endian")]
 mod be {
     use super::*;
-    #[cfg(feature = "byte_impls")] 
+    #[cfg(feature = "byte_impls")]
     mod bytes {
         use super::*;
         add_shift_ops!(BigEndian<u8>);
-        add_shift_ops!(BigEndian<i8>);        
+        add_shift_ops!(BigEndian<i8>);
     }
 
     #[cfg(feature = "integer_impls")]
@@ -66,11 +66,11 @@ mod be {
 #[cfg(feature = "big_endian")]
 mod le {
     use super::*;
-    #[cfg(feature = "byte_impls")] 
+    #[cfg(feature = "byte_impls")]
     mod bytes {
         use super::*;
         add_shift_ops!(LittleEndian<u8>);
-        add_shift_ops!(LittleEndian<i8>);     
+        add_shift_ops!(LittleEndian<i8>);
     }
 
     #[cfg(feature = "integer_impls")]
@@ -85,13 +85,12 @@ mod le {
         add_shift_ops!(LittleEndian<u128>);
         add_shift_ops!(LittleEndian<i128>);
         add_shift_ops!(LittleEndian<usize>);
-        add_shift_ops!(LittleEndian<isize>);        
+        add_shift_ops!(LittleEndian<isize>);
     }
 }
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
     use crate::*;
 
     #[test]

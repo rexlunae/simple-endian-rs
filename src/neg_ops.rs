@@ -68,7 +68,6 @@ mod le {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
     use crate::*;
     #[test]
     fn negate() {
