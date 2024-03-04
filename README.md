@@ -1,5 +1,7 @@
 # simple-endian
 
+With the 0.3 release, this library work on stable Rust.
+
 Yet another library for handling endian in Rust.  We use Rust's type system to ensure correct conversions and build data types with explicit endianness defined for more seamless portability of data structures between processor types.  It should be fairly lightweight, and supports `#![no_std]`.
 
 The key difference between this crate and other crates for handling endian is that in this crate, you aren't doing conversions manually at all.  You are just working in the endian that is appropriate to the data structures that you're dealing with, and we try to provide the needed traits and methods to do this in as normal a way as possible.
@@ -8,9 +10,9 @@ The key difference between this crate and other crates for handling endian is th
 
 Yes, there are several.  But I'm not entirely happy with any of them.  Specifically, most of the libraries out there right now focus on providing functions for doing endian conversions.  Here are a few of them:
 
-* https://crates.io/crates/endian
-* https://crates.io/crates/byteorder
-* https://crates.io/crates/bswap
+* The [endian](https://crates.io/crates/endian) crate.
+* The [byteorder](https://crates.io/crates/byteorder) crate.
+* The [bswap](https://crates.io/crates/bswap) crate.
 
 byteorder has over 11 million downloads, and is clearly the prevailing way to handle endian in Rust.  However, it relies on programmers writing specific logic to swap bytes and requires accessing memory in ways that are unlike normal patterns for Rust.  But really, the only difference between a big- and little-endian value is the interpretation.  It shouldn't require a drastically different pattern of code to access them.
 
@@ -23,7 +25,7 @@ The philosophy of this crate is that you define your endian when you write your 
 ```rust
 use simple_endian::*;
 
-let foo: u64be = 4.into();	//Stores 4 in foo in big endian.
+let foo: u64be = 4.into();    //Stores 4 in foo in big endian.
 
 println!("raw: {:x}, value: {:x}", foo.to_bits(), foo);
 ```
@@ -31,6 +33,7 @@ println!("raw: {:x}, value: {:x}", foo.to_bits(), foo);
 The output will depend on what sort of computer you're using.  If you're running a little-endian system, such as x86 (PCs, Macs, etc.), you will see the big endian representation interpreted as if little-endian, as it's stored in memory.  Note that the .to_bits() method is mostly there for debugging purposes, and should not be used often.
 
 This works in reverse as well:
+
 ```rust
 use simple_endian::*;
 
@@ -41,6 +44,7 @@ println!("value: {:x}", bar);
 ```
 
 If you prefer, there's a convenience method so that you don't need to explicitly convert back to the basic native type.
+
 ```rust
 use simple_endian::*;
 
@@ -56,7 +60,6 @@ And the type system ensures that native-endian values are never written without 
 let mut foo: u64be = 4.into();
 foo = 7;     // Will not compile without .into().
 ```
-
 
 ## How it works
 
@@ -116,17 +119,19 @@ The two most useful features are probably the ones that control support for big-
 * `little_endian`
 
 Others are broken into categories:
+
 * Operations types - These can make the use of `SpecificEndian<T>` types more ergonimic, and allow for some amount of optimization by avoiding unnecessary convertions to and from native endian.
-    * `bitwise`
-    * `comparisons`
-    * `math_ops`
-    * `neg_ops`
-    * `shift_ops`
+  * `bitwise`
+  * `comparisons`
+  * `math_ops`
+  * `neg_ops`
+  * `shift_ops`
 * Support for formatting in the `format` feature.
 * Support for different types
-    * `float_impls`
-    * `integer_impls`
-    * `byte_impls`
+  * `float_impls`
+  * `integer_impls`
+  * `byte_impls`
+
 ## Performance
 
 For the most part, the performance of the endian operations are extremely fast, even compared to native operations.  The main exception is the std::fmt implementations, which are in some cases quite a bit slower than default.  I'm open to suggestions on how to improve the performance, but it might be worth using .to_native() instead of directly printing the wrapped types in performance-critical contexts.
@@ -135,11 +140,10 @@ For the most part, the performance of the endian operations are extremely fast, 
 
 This crate allows for the manipulation of specific-endian structures in memory.  It does not provide any facility for reading or writing those structures, which would probably be necessary in most use cases.  See the following other crates for that functionality:
 
-* Rust's standard transmute call: https://doc.rust-lang.org/std/mem/fn.transmute.html
-* https://crates.io/crates/safe-transmute
-* https://crates.io/crates/endian_trait
-* https://crates.io/crates/byteordered
-* https://crates.io/crates/persistence - A library that wraps structs in mmap, and can be used well with this to make those structs portable.
-* https://crates.io/crates/endian-type - The endian-type library.  This appears to be essentially the same approach as this crate, but contains less functionality.
-* https://crates.io/crates/endian-types - Another very similar approach.
-
+* Rust's standard std::mem::[transmute](https://doc.rust-lang.org/std/mem/fn.transmute.html) call:
+* [safe-transmute](https://crates.io/crates/safe-transmute)
+* [endian-trait](https://crates.io/crates/endian_trait)
+* [byteordered](https://crates.io/crates/byteordered)
+* [persistance](https://crates.io/crates/persistence) - A library that wraps structs in mmap, and can be used well with this to make those structs portable.
+* [endian-type](https://crates.io/crates/endian-type) - The endian-type library.  This appears to be essentially the same approach as this crate, but contains less functionality.
+* [endian-types](https://crates.io/crates/endian-types) - Another very similar approach.
