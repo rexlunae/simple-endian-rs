@@ -21,7 +21,7 @@ macro_rules! add_bitwise_ops {
         impl BitAnd for $wrap_ty {
             type Output = Self;
             fn bitand(self, rhs: Self) -> Self::Output {
-                Self{_v: self._v & rhs._v}
+                Self(self.0 & rhs.0)
             }
         }
         impl BitAndAssign for $wrap_ty {
@@ -34,7 +34,7 @@ macro_rules! add_bitwise_ops {
             type Output = Self;
 
             fn bitxor(self, rhs: Self) -> Self::Output {
-                Self{_v: self._v ^ rhs._v}
+                Self(self.0 ^ rhs.0)
             }
         }
         impl BitXorAssign for $wrap_ty {
@@ -46,7 +46,7 @@ macro_rules! add_bitwise_ops {
             type Output = Self;
 
             fn bitor(self, rhs: Self) -> Self {
-                Self{_v: self._v | rhs._v}
+                Self(self.0 | rhs.0)
             }
         }
         impl BitOrAssign for $wrap_ty {
@@ -58,7 +58,7 @@ macro_rules! add_bitwise_ops {
             type Output = Self;
 
             fn not(self) -> Self::Output {
-                Self{_v: !self._v}
+                Self(!self.0)
             }
         }
     }

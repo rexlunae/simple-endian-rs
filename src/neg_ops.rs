@@ -1,11 +1,7 @@
 //! Module adding negation to the types where it's possible.
-#[allow(unused_imports)]
 use core::ops::Neg;
-
-#[allow(unused_imports)]
 use super::*;
 
-#[allow(unused_macros)]
 macro_rules! add_neg_ops {
     ($wrap_ty:ty) => {
         impl Neg for $wrap_ty {
