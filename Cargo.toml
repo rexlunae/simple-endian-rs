@@ -1,6 +1,6 @@
 [package]
 name = "simple_endian"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Erica Stith <rexlunae@gmail.com>"]
 edition = "2021"
 license = "MIT"
