@@ -1,6 +1,6 @@
 # simple-endian
 
-With the 0.3 release, this library work on stable Rust.
+As of the 0.3 release, this library works on stable Rust.
 
 Yet another library for handling endian in Rust.  We use Rust's type system to ensure correct conversions and build data types with explicit endianness defined for more seamless portability of data structures between processor types.  It should be fairly lightweight, and supports `#![no_std]`.
 
@@ -22,6 +22,20 @@ Because I think a better approach is to define your endianness as part of your d
 
 The philosophy of this crate is that you define your endian when you write your data structures, and then you use clear, imperative logic to mutate it without needing to think about the details or the host endian.  This makes it fundamentally different from crates that just give you a way to read a `&[u8; 8]` into a `u64`.
 
+## Goals of this project
+
+The goals of this crate are as follows:
+
+1. Safely provide specific-endian types with low or no runtime overhead. There should be no runtime penalty when the host architecture matches the specified endianness, and very low penalty loads and stores otherwise.
+2. Straightforward, architecture-independent declarative syntax which ensures that load and store operations as correct.
+3. Ergonomic use patterns that maximize clarity and convenience without sacrificing correctness safety or correctness.
+4. Incorrect handling of data should generate clear type errors at compile time.
+5. Determination of correct endianness should be at declaration, and should not need to be repeated unless converting to a different endianness.
+6. Support for all or Rust's built-in types where endianness is relevant.
+7. The only dependency needed is the core crate. The std crate is used, however, for tests and benchmarks.
+
+## Examples
+
 ```rust
 use simple_endian::*;
 
@@ -30,7 +44,7 @@ let foo: u64be = 4.into();    //Stores 4 in foo in big endian.
 println!("raw: {:x}, value: {:x}", foo.to_bits(), foo);
 ```
 
-The output will depend on what sort of computer you're using.  If you're running a little-endian system, such as x86 (PCs, Macs, etc.), you will see the big endian representation interpreted as if little-endian, as it's stored in memory.  Note that the .to_bits() method is mostly there for debugging purposes, and should not be used often.
+The output will depend on what sort of computer you're using.  If you're running a little-endian system, such as x86 (PCs, Macs, etc.), you will see the big endian representation interpreted as if little-endian, as it's stored in memory.  Note that the ``.to_bits()` method is mostly there for debugging purposes, and should not be used often.
 
 This works in reverse as well:
 
@@ -63,7 +77,7 @@ foo = 7;     // Will not compile without .into().
 
 ## How it works
 
-At its core, this crate centers around one trait, called `SpecificEndian<T>`, and the generic structs `BigEndian<T>` and `LittleEndian<T>`.  `SpecificEndian<T>` is required to make `BigEndian<T>` and `LittleEndian<T>` structs.  Any struct that implements `SpecificEndian`, even if it handles endianness in unusual ways, can be assigned `BigEndian` and `LittleEndian` variants using the structs in this crate, the main possibly difficult limitation being that they need to use the same underlying structure.  In fact, `u64be` is just a type alias for `BigEndian<u64>`.  There is no memory footprint added by the `BigEndian<T>` and `LittleEndian<T>` structs, in fact, in most cases it uses the type T to store the data.  The only purpose of the structs is to tag them for Rust's type system to enforce correct accesses.  This means that it can be used directly within larger structs, and then the entire struct can be written to disk, send over a network socket, and otherwise shared between processor architectures using the same code regardless of host endian using declarative logic without any conditionals.
+At its core, this crate centers around one trait, called `SpecificEndian<T>`, and the generic structs `BigEndian<T>` and `LittleEndian<T>`.  `SpecificEndian<T>` is required to make `BigEndian<T>` and `LittleEndian<T>` structs.  Any data type that implements `SpecificEndian`, even if it handles endianness in unusual ways, can be assigned `BigEndian` and `LittleEndian` variants using the structs in this crate, the main possibly limitation being that they need to use the same underlying structure.  In fact, `u64be` is just a type alias for `BigEndian<u64>`.  There is no memory footprint added by the `BigEndian<T>` and `LittleEndian<T>` structs, in fact, in most cases it uses the type T to store the data.  The only purpose of the structs is to tag them for Rust's type system to enforce correct accesses.  This means that it can be used directly within larger structs, and then the entire struct can be written to disk, send over a network socket, and otherwise shared between processor architectures using the same code regardless of host endian using declarative logic without any conditionals.
 
 This crate provides `SpecificEndian` implementations for most of the built-in types in Rust, including:
 
@@ -94,6 +108,7 @@ Alternatively, you might want to define a structure with the elements typed so t
 use simple_endian::*;
 
 #[derive(Debug)]
+#[repr(C)]
 struct NetworkConfig {
     address: BigEndian<u32>,
     mask: BigEndian<u32>,
@@ -105,11 +120,21 @@ let config = NetworkConfig{address: 0x0a00000a.into(), mask: 0xff000000.into(), 
 println!("value: {:x?}", config);
 ```
 
-Note that the println! will interpret the values in native endian.
+Note that the println! will convert the values to native endian.
 
-And finally, this crate implements a number of traits that allow most of the basic arithmetic operators to be used on the Big- and LittleEndian variants of all of the types, where appropriate, including for the floats.  There is a certain amount of overhead to this, since each operation requires at least one and often two or more endian conversions, however, since this crate aims to minimize the cost of writing portable code, they are provided to reduce friction to adoption.  If you are writing code that is extremely sensitive to such overhead, it might make sense to convert to native endian, do your operations, and then store back in the specified endian using `into()` or similar.  That said, the overhead is often very small, and Rust's optimizer is very good, so I would encourage you to do some actual benchmarking before taking an unergonomic approach to your code.  There are too many traits implemented to list them here, so I recommend consulting [the documentation](https://docs.rs/simple_endian/).  Alternatively, you could just try what you want to do, and see if it compiles.  It shouldn't ever allow you to compile something that doesn't handle endianness correctly unless you work pretty hard at it.
+And finally, this crate implements a number of traits that allow most of the basic arithmetic operators to be used on the Big- and LittleEndian variants of all of the types, where appropriate, including for the floats.  There is a certain amount of overhead to this, since each operation requires at least one and often two or more endian conversions, however, since this crate aims to minimize the cost of writing portable code, they are provided to reduce friction to adoption.  If you are writing code that is extremely sensitive to such overhead, it might make sense to convert to native endian, do your operations, and then store back in the specified endian using `.into()` or similar.  That said, the overhead is often very small, and Rust's optimizer is very good, so I would encourage you to do some actual benchmarking before taking an unergonomic approach to your code.  There are too many traits implemented to list them here, so I recommend consulting [the documentation](https://docs.rs/simple_endian/).  Alternatively, you could just try what you want to do, and see if it compiles.  It shouldn't ever allow you to compile something that doesn't handle endianness correctly unless you work pretty hard at it.
+
+### Representations and ABI
+
+You might notice that we used `#[repr(C)]` in the data struct above, and you might be wondering why. It is often the case that you want to write a `struct` that has a very specific layout when you are writing structures that will be directly read from and written to some medium. Rust's default ABI does not guarantee this. For that reason, all of the structs defined in this crate are `#[repr(transparent)]`, and it is strongly recommended if you do plan to directly write these structures to disk or the network, that you do something to ensure a consistent layout similar or otherwise guarantee the order in which the fields are stored.
+
+## Operations on Types
+
+In addition to offering support for ensuring that correct endianness is used by leveraging the Rust type system, this crate also provides implementations of a number of traits from the `core` library that allow you to work with values directly without converting them to native endian types first. In many cases, this is literally a zero-cost capability, because bitwise operations are endian-agnostic, and as long as you are using other `SpecificEndian` types, there is no overhead to doing operations on them directly. In cases where a conversion to native endian is necessary, the crate will perform the conversion, and return a value in the same type as the input.
 
 ## Features
+
+Although this crate includes a lot of useful functionality up front, including it all can increase your compiled size significantly. For size-conscious applications, I recommend not including everything.
 
 By default, this crate will compile with all supported features. Although this means that in most cases, almost anything you would want to do would work out of the box, in practical terms, this can make the crate rather large. To avoid bloat, it might be best to set `default-features = false` in your "Cargo.toml", and add back in the features you actually need.
 
