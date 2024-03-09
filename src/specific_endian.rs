@@ -105,29 +105,26 @@ mod float_impls {
 /// A big-endian representation of type `T` that implements `SpecificEndian<T>`.  Data stored in the struct must be converted to big-endian using `::from()` or `.into()`.
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq)]
 #[repr(transparent)]
-pub struct BigEndian<T: SpecificEndian<T>> {pub(crate) _v: T}
-unsafe impl<T: Send + SpecificEndian<T>> Send for BigEndian<T> {}
-unsafe impl<T: Sync + SpecificEndian<T>> Sync for BigEndian<T> {}
-
+pub struct BigEndian<T: SpecificEndian<T>> (pub(crate) T);
 
 impl<T> BigEndian<T> where T: SpecificEndian<T> {
     /// Returns the raw data stored in the struct.
     pub fn to_bits(&self) -> T {
-        self._v
+        self.0
     }
     /// Imports the data raw into a BigEndian<T> struct.
     pub fn from_bits(v: T) -> Self {
-        Self{_v: v}
+        Self(v)
     }
     /// Converts the data to the same type T in host-native endian.
     pub fn to_native(&self) -> T {
-        T::from_big_endian(&self._v)
+        T::from_big_endian(&self.0)
     }
 }
 
 impl<T: SpecificEndian<T>> From<T> for BigEndian<T> {
     fn from(v: T) -> BigEndian<T> {
-        BigEndian::<T>{_v: v.to_big_endian()}
+        BigEndian::<T>(v.to_big_endian())
     }
 }
 
@@ -135,28 +132,26 @@ impl<T: SpecificEndian<T>> From<T> for BigEndian<T> {
 /// A little-endian representation of type `T` that implements `SpecificEndian<T>`.  Data stored in the struct must be converted to little-endian using `::from()` or `.into()`.
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq)]
 #[repr(transparent)]
-pub struct LittleEndian<T: SpecificEndian<T>> {pub(crate) _v: T}
-unsafe impl<T: Send + SpecificEndian<T>> Send for LittleEndian<T> {}
-unsafe impl<T: Sync + SpecificEndian<T>> Sync for LittleEndian<T> {}
+pub struct LittleEndian<T: SpecificEndian<T>> (pub(crate) T);
 
 impl<T> LittleEndian<T> where T: SpecificEndian<T> {
     /// Returns the raw data stored in the struct.
     pub fn to_bits(&self) -> T {
-        self._v
+        self.0
     }
     /// Imports the data raw into a LittleEndian<T> struct.
     pub fn from_bits(v: T) -> Self {
-        Self{_v: v}
+        Self(v)
     }
     /// Converts the data to the same type T in host-native endian.
     pub fn to_native(&self) -> T {
-        T::from_little_endian(&self._v)
+        T::from_little_endian(&self.0)
     }
 }
 
 impl<T: SpecificEndian<T>> From<T> for LittleEndian<T> {
     fn from(v: T) -> LittleEndian<T> {
-        LittleEndian::<T>{_v: v.to_little_endian()}
+        LittleEndian::<T>(v.to_little_endian())
     }
 }
 
@@ -171,7 +166,7 @@ mod big_endian_primatives {
 
             impl From<BigEndian<$wrap_ty>> for $wrap_ty {
                 fn from(v: BigEndian<$wrap_ty>) -> $wrap_ty {
-                    v._v.from_big_endian()
+                    v.0.from_big_endian()
                 }
             }
 
@@ -208,7 +203,7 @@ mod little_endian_primatives {
 
             impl From<LittleEndian<$wrap_ty>> for $wrap_ty {
                 fn from(v: LittleEndian<$wrap_ty>) -> $wrap_ty {
-                    v._v.from_little_endian()
+                    v.0.from_little_endian()
                 }
             }
 
@@ -357,7 +352,7 @@ mod tests {
     #[test]
     fn convert_to_native() {
         let be = BigEndian::from(0xfe);
-        println!("{:x}, {:x}", be._v, be.to_native());
+        println!("{:x}, {:x}", be.0, be.to_native());
         assert_eq!(0xfe, be.to_native());
     }
 
@@ -429,25 +424,25 @@ mod tests {
         impl SpecificEndian<EndianAwareExample> for EndianAwareExample {
             fn to_big_endian(&self) -> Self {
                 match self {
-                    EndianAwareExample::BigEndianFunction(_v) => *self,
+                    EndianAwareExample::BigEndianFunction(_) => *self,
                     EndianAwareExample::LittleEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_big_endian()),
                 }
             }
             fn to_little_endian(&self) -> Self {
                 match self {
-                    EndianAwareExample::LittleEndianFunction(_v) => *self,
+                    EndianAwareExample::LittleEndianFunction(_0) => *self,
                     EndianAwareExample::BigEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_little_endian()),
                 }
             }
             fn from_big_endian(&self) -> Self {
                 match self {
-                    EndianAwareExample::BigEndianFunction(_v) => *self,
+                    EndianAwareExample::BigEndianFunction(_0) => *self,
                     EndianAwareExample::LittleEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_big_endian()),
                 }
             }
             fn from_little_endian(&self) -> Self {
                 match self {
-                    EndianAwareExample::LittleEndianFunction(_v) => *self,
+                    EndianAwareExample::LittleEndianFunction(_) => *self,
                     EndianAwareExample::BigEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_little_endian()),
                 }
             }
