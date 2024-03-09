@@ -3,6 +3,8 @@
         "endianness",
         "impl",
         "impls",
+        "mmap",
+        "repr",
         "unergonomic"
     ]
 }
