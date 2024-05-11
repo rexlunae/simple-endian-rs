@@ -116,35 +116,35 @@ mod tests {
     fn equality_test() {
         let be1 = BigEndian::from(12345);
         let be2 = BigEndian::from(12345);
-        assert_eq!(true, be1 == be2);
+        assert!(be1 == be2);
     }
 
     #[test]
     fn not_equality_test() {
         let be1 = BigEndian::from(12345);
         let be2 = BigEndian::from(34565);
-        assert_eq!(true, be1 != be2);
+        assert!(be1 != be2);
     }
 
     #[test]
     fn lt_test() {
         let be1 = BigEndian::from(12345);
         let be2 = BigEndian::from(34565);
-        assert_eq!(true, be1 < be2);
+        assert!(be1 < be2);
     }
 
     #[test]
     fn gt_test() {
         let be1 = BigEndian::from(34565);
         let be2 = BigEndian::from(12345);
-        assert_eq!(true, be1 > be2);
+        assert!(be1 > be2);
     }
 
     #[test]
     fn lt_fp_be() {
         let be1 = BigEndian::from(1234.5678);
         let be2 = BigEndian::from(6234.5678);
-        assert_eq!(true, be1 < be2);
+        assert!(be1 < be2);
     }
 
 }

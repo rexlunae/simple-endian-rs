@@ -139,7 +139,7 @@ mod tests {
     #[test]
     fn add_fp_be() {
         let mut be1 = f64be::from(1234.5678);
-        be1 = be1 + 1.0.into();
+        be1 += 1.0.into();
         be1 += 1.0.into();
         assert_eq!(be1, 1236.5678.into());
     }
@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn subtract_fp_be() {
         let mut be1 = f64be::from(1234.5678);
-        be1 = be1 - 1.0.into();
+        be1 -= 1.0.into();
         be1 -= 1.0.into();
         assert_eq!(be1, 1232.5678.into());
     }
@@ -155,7 +155,7 @@ mod tests {
     #[test]
     fn mul_fp_be() {
         let mut be1 = f64be::from(1234.5678);
-        be1 = be1 * 10.0.into();
+        be1 *= 10.0.into();
         be1 *= 10.0.into();
         assert_eq!(be1, 123456.78.into());
     }
@@ -164,8 +164,8 @@ mod tests {
     fn div_fp_be() {
         let mut ne1: f64 = 1234.5678;
         let mut be1 = f64be::from(ne1);
-        be1 = be1 / 10.0.into();
-        ne1 = ne1 / 10.0;
+        be1 /= 10.0.into();
+        ne1 /= 10.0;
         be1 /= 10.0.into();
         ne1 /= 10.0;
         assert_eq!(ne1, be1.into());
