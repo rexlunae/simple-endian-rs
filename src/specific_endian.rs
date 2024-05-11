@@ -1,11 +1,12 @@
-
 /// Any object implementing `SpecificEndian<T>` can be converted between big and little endian.  Implement this trait to allow for endian conversion by this crate.
-pub trait SpecificEndian<T> where Self: Into<T> + Clone + Copy {
+pub trait SpecificEndian<T>
+where
+    Self: Into<T> + Clone + Copy,
+{
     fn to_big_endian(&self) -> T;
     fn to_little_endian(&self) -> T;
     fn from_big_endian(&self) -> T;
     fn from_little_endian(&self) -> T;
-
 }
 
 #[cfg(feature = "byte_impls")]
@@ -14,7 +15,6 @@ mod byte_impls {
     /// A macro implementing `SpecificEndian<T>` for simple data types where big and little endian forms are the same.
     macro_rules! make_specific_endian_single_byte {
         ($wrap_ty:ty) => {
-
             impl SpecificEndian<$wrap_ty> for $wrap_ty {
                 fn to_big_endian(&self) -> Self {
                     *self
@@ -29,7 +29,7 @@ mod byte_impls {
                     *self
                 }
             }
-        }
+        };
     }
 
     make_specific_endian_single_byte!(u8);
@@ -44,7 +44,6 @@ mod integer_impls {
     /// A macro for implementing `SpecificEndian<T>` on types that have endian conversions built into Rust.  Currently, this is the primitive integer types.
     macro_rules! make_specific_endian_integer {
         ($wrap_ty:ty) => {
-
             impl SpecificEndian<$wrap_ty> for $wrap_ty {
                 fn to_big_endian(&self) -> Self {
                     self.to_be()
@@ -59,7 +58,7 @@ mod integer_impls {
                     Self::from_le(*self)
                 }
             }
-        }
+        };
     }
 
     make_specific_endian_integer!(u16);
@@ -80,7 +79,6 @@ mod float_impls {
     /// Uses .from_bits() and .to_bits() to implement SpecificEndian<T> with Integer types.  Can be used with any type having these methods, but mainly for use with the floats.
     macro_rules! make_specific_endian_float {
         ($wrap_ty:ty) => {
-
             impl SpecificEndian<$wrap_ty> for $wrap_ty {
                 fn to_big_endian(&self) -> Self {
                     Self::from_bits(self.to_bits().to_be())
@@ -95,7 +93,7 @@ mod float_impls {
                     Self::from_bits(self.to_bits().from_little_endian())
                 }
             }
-        }
+        };
     }
 
     make_specific_endian_float!(f32);
@@ -105,9 +103,12 @@ mod float_impls {
 /// A big-endian representation of type `T` that implements `SpecificEndian<T>`.  Data stored in the struct must be converted to big-endian using `::from()` or `.into()`.
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq)]
 #[repr(transparent)]
-pub struct BigEndian<T: SpecificEndian<T>> (pub(crate) T);
+pub struct BigEndian<T: SpecificEndian<T>>(pub(crate) T);
 
-impl<T> BigEndian<T> where T: SpecificEndian<T> {
+impl<T> BigEndian<T>
+where
+    T: SpecificEndian<T>,
+{
     /// Returns the raw data stored in the struct.
     pub fn to_bits(&self) -> T {
         self.0
@@ -128,13 +129,15 @@ impl<T: SpecificEndian<T>> From<T> for BigEndian<T> {
     }
 }
 
-
 /// A little-endian representation of type `T` that implements `SpecificEndian<T>`.  Data stored in the struct must be converted to little-endian using `::from()` or `.into()`.
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, PartialEq)]
 #[repr(transparent)]
-pub struct LittleEndian<T: SpecificEndian<T>> (pub(crate) T);
+pub struct LittleEndian<T: SpecificEndian<T>>(pub(crate) T);
 
-impl<T> LittleEndian<T> where T: SpecificEndian<T> {
+impl<T> LittleEndian<T>
+where
+    T: SpecificEndian<T>,
+{
     /// Returns the raw data stored in the struct.
     pub fn to_bits(&self) -> T {
         self.0
@@ -163,34 +166,45 @@ mod big_endian_primatives {
     #[allow(unused_macros)]
     macro_rules! make_primitive_type_from_be {
         ($wrap_ty:ty) => {
-
             impl From<BigEndian<$wrap_ty>> for $wrap_ty {
                 fn from(v: BigEndian<$wrap_ty>) -> $wrap_ty {
                     v.0.from_big_endian()
                 }
             }
-
-        }
+        };
     }
 
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(bool);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(u8);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(i8);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(u16);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(i16);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(u32);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(i32);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(u64);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(i64);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(u128);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(i128);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(usize);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_be!(isize);
-    #[cfg(feature = "float_impls")] make_primitive_type_from_be!(f32);
-    #[cfg(feature = "float_impls")] make_primitive_type_from_be!(f64);
-
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_be!(bool);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_be!(u8);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_be!(i8);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_be!(u16);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_be!(i16);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_be!(u32);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_be!(i32);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_be!(u64);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_be!(i64);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_be!(u128);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_be!(i128);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_be!(usize);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_be!(isize);
+    #[cfg(feature = "float_impls")]
+    make_primitive_type_from_be!(f32);
+    #[cfg(feature = "float_impls")]
+    make_primitive_type_from_be!(f64);
 }
-
 
 #[cfg(feature = "little_endian")]
 mod little_endian_primatives {
@@ -200,33 +214,45 @@ mod little_endian_primatives {
     #[allow(unused_macros)]
     macro_rules! make_primitive_type_from_le {
         ($wrap_ty:ty) => {
-
             impl From<LittleEndian<$wrap_ty>> for $wrap_ty {
                 fn from(v: LittleEndian<$wrap_ty>) -> $wrap_ty {
                     v.0.from_little_endian()
                 }
             }
-
-        }
+        };
     }
 
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(bool);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(u8);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(i8);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(u16);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(i16);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(u32);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(i32);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(u64);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(i64);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(u128);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(i128);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(usize);
-    #[cfg(feature = "integer_impls")] make_primitive_type_from_le!(isize);
-    #[cfg(feature = "float_impls")] make_primitive_type_from_le!(f32);
-    #[cfg(feature = "float_impls")] make_primitive_type_from_le!(f64);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_le!(bool);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_le!(u8);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_le!(i8);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_le!(u16);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_le!(i16);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_le!(u32);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_le!(i32);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_le!(u64);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_le!(i64);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_le!(u128);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_le!(i128);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_le!(usize);
+    #[cfg(feature = "integer_impls")]
+    make_primitive_type_from_le!(isize);
+    #[cfg(feature = "float_impls")]
+    make_primitive_type_from_le!(f32);
+    #[cfg(feature = "float_impls")]
+    make_primitive_type_from_le!(f64);
 }
-
 
 #[cfg(feature = "both_endian")]
 mod both_endian_primatives {
@@ -245,7 +271,6 @@ mod both_endian_primatives {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -278,35 +303,51 @@ mod tests {
     #[test]
     fn make_struct() {
         #[repr(C)]
-        struct Foo (
+        struct Foo(
             BigEndian<i16>,
             LittleEndian<i16>,
             BigEndian<u16>,
             LittleEndian<u16>,
-
             BigEndian<i32>,
             LittleEndian<i32>,
             BigEndian<u32>,
             LittleEndian<u32>,
-
             BigEndian<i64>,
             LittleEndian<i64>,
             BigEndian<u64>,
             LittleEndian<u64>,
-
             BigEndian<i128>,
             LittleEndian<i128>,
             BigEndian<u128>,
             LittleEndian<u128>,
-
             BigEndian<f32>,
             LittleEndian<f32>,
             BigEndian<f64>,
             LittleEndian<f64>,
-
         );
 
-        let _foo = Foo(0.into(), 1.into(), 2.into(), 3.into(), 4.into(), 5.into(), 6.into(), 7.into(), 8.into(), 9.into(), 10.into(), 11.into(), 12.into(), 13.into(), 14.into(), 15.into(), (0.1).into(), (123.5).into(), (7.8).into(), (12345.4567).into());
+        let _foo = Foo(
+            0.into(),
+            1.into(),
+            2.into(),
+            3.into(),
+            4.into(),
+            5.into(),
+            6.into(),
+            7.into(),
+            8.into(),
+            9.into(),
+            10.into(),
+            11.into(),
+            12.into(),
+            13.into(),
+            14.into(),
+            15.into(),
+            (0.1).into(),
+            (123.5).into(),
+            (7.8).into(),
+            (12345.4567).into(),
+        );
     }
 
     #[test]
@@ -314,8 +355,7 @@ mod tests {
         let be: BigEndian<u64> = 0xfe.into();
         if cfg!(byte_order = "big endian") {
             assert_eq!(be.to_bits(), 0xfe);
-        }
-        else {
+        } else {
             assert_eq!(be.to_bits(), 0xfe00000000000000);
         }
     }
@@ -330,8 +370,7 @@ mod tests {
         let le: LittleEndian<u64> = 0xfe.into();
         if cfg!(byte_order = "big endian") {
             assert_eq!(le.to_bits(), 0xfe00000000000000);
-        }
-        else {
+        } else {
             assert_eq!(le.to_bits(), 0xfe);
         }
     }
@@ -425,37 +464,50 @@ mod tests {
             fn to_big_endian(&self) -> Self {
                 match self {
                     EndianAwareExample::BigEndianFunction(_) => *self,
-                    EndianAwareExample::LittleEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_big_endian()),
+                    EndianAwareExample::LittleEndianFunction(v) => {
+                        EndianAwareExample::BigEndianFunction(v.to_big_endian())
+                    }
                 }
             }
             fn to_little_endian(&self) -> Self {
                 match self {
                     EndianAwareExample::LittleEndianFunction(_0) => *self,
-                    EndianAwareExample::BigEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_little_endian()),
+                    EndianAwareExample::BigEndianFunction(v) => {
+                        EndianAwareExample::BigEndianFunction(v.to_little_endian())
+                    }
                 }
             }
             fn from_big_endian(&self) -> Self {
                 match self {
                     EndianAwareExample::BigEndianFunction(_0) => *self,
-                    EndianAwareExample::LittleEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_big_endian()),
+                    EndianAwareExample::LittleEndianFunction(v) => {
+                        EndianAwareExample::BigEndianFunction(v.to_big_endian())
+                    }
                 }
             }
             fn from_little_endian(&self) -> Self {
                 match self {
                     EndianAwareExample::LittleEndianFunction(_) => *self,
-                    EndianAwareExample::BigEndianFunction(v) => EndianAwareExample::BigEndianFunction(v.to_little_endian()),
+                    EndianAwareExample::BigEndianFunction(v) => {
+                        EndianAwareExample::BigEndianFunction(v.to_little_endian())
+                    }
                 }
             }
-
         }
-        let foo: BigEndian<EndianAwareExample> = EndianAwareExample::LittleEndianFunction(0xf0).into();
+        let foo: BigEndian<EndianAwareExample> =
+            EndianAwareExample::LittleEndianFunction(0xf0).into();
         #[allow(unused_assignments)]
         let mut value = 0;
         match foo.to_native() {
-            EndianAwareExample::BigEndianFunction(v) => { println!("be: {:x}", v); value = v }
-            EndianAwareExample::LittleEndianFunction(v) => { println!("le: {:x}", v); value = 0 }
+            EndianAwareExample::BigEndianFunction(v) => {
+                println!("be: {:x}", v);
+                value = v
+            }
+            EndianAwareExample::LittleEndianFunction(v) => {
+                println!("le: {:x}", v);
+                value = 0
+            }
         }
         assert_eq!(value, 0x0f000000000000000);
     }
-
 }

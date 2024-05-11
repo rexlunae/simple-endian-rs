@@ -1,6 +1,6 @@
 //! Module adding negation to the types where it's possible.
-use core::ops::Neg;
 use super::*;
+use core::ops::Neg;
 
 macro_rules! add_neg_ops {
     ($wrap_ty:ty) => {
@@ -11,13 +11,14 @@ macro_rules! add_neg_ops {
                 Self::from(-self.to_native())
             }
         }
-    }
+    };
 }
 
 #[cfg(feature = "big_endian")]
 mod be {
     use super::*;
-    #[cfg(feature = "byte_impls")] add_neg_ops!(BigEndian<i8>);
+    #[cfg(feature = "byte_impls")]
+    add_neg_ops!(BigEndian<i8>);
 
     #[cfg(feature = "integer_impls")]
     mod integers {
@@ -37,11 +38,11 @@ mod be {
     }
 }
 
-
 #[cfg(feature = "little_endian")]
 mod le {
     use super::*;
-    #[cfg(feature = "byte_impls")] add_neg_ops!(LittleEndian<i8>);
+    #[cfg(feature = "byte_impls")]
+    add_neg_ops!(LittleEndian<i8>);
 
     #[cfg(feature = "integer_impls")]
     mod integers {
@@ -61,7 +62,6 @@ mod le {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::*;
@@ -79,5 +79,4 @@ mod tests {
         println!("{}, {}", be1, be2);
         assert_eq!(be2, f64be::from(-1.0));
     }
-
 }

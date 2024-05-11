@@ -10,7 +10,7 @@
 //! a ^= 0x5555555.into();
 //! ```
 
-use core::ops::{BitAnd, Not, BitAndAssign, BitXor, BitXorAssign, BitOr, BitOrAssign};
+use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
 
 use super::*;
 
@@ -25,7 +25,7 @@ macro_rules! add_bitwise_ops {
             }
         }
         impl BitAndAssign for $wrap_ty {
-           fn bitand_assign(&mut self, rhs: Self) {
+            fn bitand_assign(&mut self, rhs: Self) {
                 *self = *self & rhs
             }
         }
@@ -61,7 +61,7 @@ macro_rules! add_bitwise_ops {
                 Self(!self.0)
             }
         }
-    }
+    };
 }
 
 #[cfg(feature = "byte_impls")]
@@ -82,7 +82,6 @@ mod bitwise_byte_ops {
         add_bitwise_ops!(LittleEndian<i8>);
     }
 }
-
 
 #[cfg(feature = "integer_impls")]
 mod bitwise_integer_ops {
@@ -134,6 +133,4 @@ mod tests {
         let be1 = BigEndian::<u16>::from(0x0f0);
         assert_eq!(0xff0f, u16::from(!be1));
     }
-
-
 }

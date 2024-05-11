@@ -1,8 +1,19 @@
 //use criterion::{criterion_group, criterion_main, Criterion};
-use bencher::{Bencher, benchmark_group, benchmark_main};
+use bencher::{benchmark_group, benchmark_main, Bencher};
 
-benchmark_group!(benches, bench_integer_be, bench_integer_le, bench_integer_ne, bench_fp_be, bench_fp_le
-    , bench_fp_ne, base_endian_test_be, base_endian_test_le, base_endian_test_ne, base_endian_test_structured);
+benchmark_group!(
+    benches,
+    bench_integer_be,
+    bench_integer_le,
+    bench_integer_ne,
+    bench_fp_be,
+    bench_fp_le,
+    bench_fp_ne,
+    base_endian_test_be,
+    base_endian_test_le,
+    base_endian_test_ne,
+    base_endian_test_structured
+);
 //benchmark_group!(benches, bench_integer_be);
 benchmark_main!(benches);
 
@@ -48,7 +59,6 @@ fn bench_integer_ne(b: &mut Bencher) {
     });
 }
 
-
 fn bench_fp_be(b: &mut Bencher) {
     b.iter(|| {
         let mut a = BigEndian::from(1234567890.1);
@@ -84,7 +94,6 @@ fn bench_fp_ne(b: &mut Bencher) {
         println!("{}", a);
     });
 }
-
 
 fn base_endian_test_be(b: &mut Bencher) {
     b.iter(|| {

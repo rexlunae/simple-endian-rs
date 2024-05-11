@@ -33,7 +33,7 @@ macro_rules! add_shift_ops {
                 *self = Self::from((*self).to_native() >> rhs.to_native());
             }
         }
-    }
+    };
 }
 
 #[cfg(feature = "big_endian")]
@@ -61,7 +61,6 @@ mod be {
         add_shift_ops!(BigEndian<isize>);
     }
 }
-
 
 #[cfg(feature = "big_endian")]
 mod le {
@@ -114,6 +113,4 @@ mod tests {
         ne1 >>= 5;
         assert_eq!(ne1, be1.into());
     }
-
-
 }

@@ -1,5 +1,5 @@
 //! Implementations for formatting the various types.
-use core::fmt::{Formatter, Result, UpperHex, LowerHex, Octal, Binary, Display};
+use core::fmt::{Binary, Display, Formatter, LowerHex, Octal, Result, UpperHex};
 
 use super::*;
 
@@ -13,7 +13,6 @@ impl<T: UpperHex + SpecificEndian<T>> UpperHex for LittleEndian<T> {
         write!(f, "{:X}", self.to_native()) // delegate to i32's implementation
     }
 }
-
 
 impl<T: LowerHex + SpecificEndian<T>> LowerHex for BigEndian<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {

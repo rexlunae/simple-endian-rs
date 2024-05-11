@@ -62,8 +62,7 @@ macro_rules! add_math_ops {
                 *self = *self - other;
             }
         }
-
-    }
+    };
 }
 
 #[cfg(feature = "big_endian")]
@@ -170,6 +169,4 @@ mod tests {
         ne1 /= 10.0;
         assert_eq!(ne1, be1.into());
     }
-
-
 }
