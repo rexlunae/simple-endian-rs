@@ -1,111 +1,113 @@
 #![cfg_attr(not(test), no_std)]
-//! Many byte-order-handling libraries focus on providing code to convert to and from big- or little-endian.  However,
-//! this requires users of those libraries to use a lot of explicit logic.  This library uses the Rust type system to
-//! enforce conversions invisibly, and also ensure that they are done consistently.  A struct member can be read and written
-//! simply using the standard From and Into trait methods (from() and into()).  No explicit endian checks are required.
-//!
-//! # Example 1:
-//!
-//!```rust
-//! use simple_endian::*;
-//!
-//! fn init() {
-//!     #[repr(C)]
-//!     struct BinPacket {
-//!         a: u64be,
-//!         b: u32be,
-//!     }
-//!     let mut bp = BinPacket{a: 0xfe.into(), b: 10.into()};
-//!     let new_a = bp.a.to_native() * 1234;
+/*!
+Many byte-order-handling libraries focus on providing code to convert to and from big- or little-endian.  However,
+this requires users of those libraries to use a lot of explicit logic.  This library uses the Rust type system to
+enforce conversions invisibly, and also ensure that they are done consistently.  A struct member can be read and written
+simply using the standard From and Into trait methods (from() and into()).  No explicit endian checks are required.
 
-//!     bp.a = new_a.into();
-//!     bp.b = 1234.into();
-//! }
-//! ```
-//!
-//! Trying to write `bp.a = new_a;` causes an error because the type u64 can't be directly stored.
-//!
-//! # Example 2: Writing a portable struct to a file.
-//!
-//! Of course, just storing things in memory isn't that useful unless you write somewhere.
-//!
-//! ```rust
-//! use simple_endian::*;
-//! use std::fs::File;
-//! use std::io::prelude::*;
-//! use std::mem::{transmute, size_of};
-//!
-//! // We have to specify a representation in order to define the layout.
-//! #[repr(C)]
-//! struct BinBEStruct {
-//!     pub a: u64be,
-//!     b: u64be,
-//!     c: f64be,
-//! }
-//!
-//! fn main() -> std::io::Result<()> {
-//!    let bin_struct = BinBEStruct{a: 345.into(), b: 0xfee.into(), c: 9.345.into()};
-//!
-//!    let mut pos = 0;
-//!    let mut data_file = File::create(".test.bin")?;
-//!    let buffer = unsafe { transmute::<&BinBEStruct, &[u8; size_of::<BinBEStruct>()]>(&bin_struct) };
-//!
-//!    while pos < buffer.len() {
-//!        let bytes_written = data_file.write(&buffer[pos..])?;
-//!        pos += bytes_written;
-//!    }
-//!    Ok(())
-//! }
-//! ```
-//! # Example 3: Mmapping a portable struct with the memmap crate.
-//!
-//! You'll need to add memmap to your Cargo.toml to get this to actually work:
-//!
-//! ```rust
-//! extern crate memmap;
-//!
-//!  use std::{
-//!     io::Error,
-//!     fs::OpenOptions,
-//!     mem::size_of,
-//! };
-//!
-//! use memmap::MmapOptions;
-//! use simple_endian::*;
-//!
-//! #[repr(C)]
-//! struct MyBEStruct {
-//!     header: u64be,
-//!     label: [u8; 8],
-//!     count: u128be,
-//! }
-//!
-//! fn main() -> Result<(), Error> {
-//!     let file = OpenOptions::new()
-//!         .read(true).write(true).create(true)
-//!         .open(".test.bin")?;
-//!
-//!     // Truncate the file to the size of the header.
-//!     file.set_len(size_of::<MyBEStruct>() as u64)?;
-//!     let mut mmap = unsafe { MmapOptions::new().map_mut(&file)? };
-//!
-//!     let mut ptr = mmap.as_mut_ptr() as *mut MyBEStruct;
-//!
-//!     unsafe {
-//!         // Set the magic number
-//!         (*ptr).header = 0xfeedface.into();
-//!
-//!         // Increment the counter each time we run.
-//!         (*ptr).count += 1.into();
-//!
-//!         (*ptr).label = *b"Iamhere!";
-//!     }
-//!
-//!     println!("done.");
-//!     Ok(())
-//! }
-//! ```
-//!
+# Example 1:
+
+```rust
+use simple_endian::*;
+
+fn init() {
+    #[repr(C)]
+    struct BinPacket {
+        a: u64be,
+        b: u32be,
+    }
+    let mut bp = BinPacket{a: 0xfe.into(), b: 10.into()};
+    let new_a = bp.a.to_native() * 1234;
+
+    bp.a = new_a.into();
+    bp.b = 1234.into();
+}
+```
+
+Trying to write `bp.a = new_a;` causes an error because the type u64 can't be directly stored.
+
+# Example 2: Writing a portable struct to a file.
+
+Of course, just storing things in memory isn't that useful unless you write somewhere.
+
+```rust
+use simple_endian::*;
+use std::fs::File;
+use std::io::prelude::*;
+use std::mem::{transmute, size_of};
+
+// We have to specify a representation in order to define the layout.
+#[repr(C)]
+struct BinBEStruct {
+    pub a: u64be,
+    b: u64be,
+    c: f64be,
+}
+
+fn main() -> std::io::Result<()> {
+    let bin_struct = BinBEStruct{a: 345.into(), b: 0xfee.into(), c: 9.345.into()};
+
+    let mut pos = 0;
+    let mut data_file = File::create(".test.bin")?;
+    let buffer = unsafe { transmute::<&BinBEStruct, &[u8; size_of::<BinBEStruct>()]>(&bin_struct) };
+
+    while pos < buffer.len() {
+        let bytes_written = data_file.write(&buffer[pos..])?;
+        pos += bytes_written;
+    }
+    Ok(())
+}
+```
+# Example 3: Mmapping a portable struct with the memmap crate.
+
+You'll need to add memmap to your Cargo.toml to get this to actually work:
+
+```rust
+extern crate memmap;
+
+use std::{
+    io::Error,
+    fs::OpenOptions,
+    mem::size_of,
+};
+
+use memmap::MmapOptions;
+use simple_endian::*;
+
+#[repr(C)]
+struct MyBEStruct {
+    header: u64be,
+    label: [u8; 8],
+    count: u128be,
+}
+
+fn main() -> Result<(), Error> {
+    let file = OpenOptions::new()
+        .read(true).write(true).create(true)
+        .open(".test.bin")?;
+
+    // Truncate the file to the size of the header.
+    file.set_len(size_of::<MyBEStruct>() as u64)?;
+    let mut mmap = unsafe { MmapOptions::new().map_mut(&file)? };
+
+    let mut ptr = mmap.as_mut_ptr() as *mut MyBEStruct;
+
+    unsafe {
+        // Set the magic number
+        (*ptr).header = 0xfeedface.into();
+
+        // Increment the counter each time we run.
+        (*ptr).count += 1.into();
+
+        (*ptr).label = *b"Iamhere!";
+    }
+
+    println!("done.");
+    Ok(())
+}
+```
+
+*/
 #[warn(soft_unstable)]
 
 /// The main part of the library.  Contains the trait SpecificEndian<T> and BigEndian<T> and LittleEndian<T> structs, as well as the

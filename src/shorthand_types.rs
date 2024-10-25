@@ -1,4 +1,6 @@
-//! Provides a bunch of short type names for easier declaration.  All follow a pattern of LittleEndian<BASETY> = BASETYPEle and BigEndian<BASETYPE> = BASETYPEbe
+/*!
+Provides a bunch of short type names for easier declaration.  All follow a pattern of LittleEndian<BASETY> = BASETYPEle and BigEndian<BASETYPE> = BASETYPEbe
+*/
 
 #![allow(non_camel_case_types)]
 use super::*;

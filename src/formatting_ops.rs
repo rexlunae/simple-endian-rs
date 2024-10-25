@@ -1,4 +1,6 @@
-//! Implementations for formatting the various types.
+/*!
+Implementations for formatting the various types.
+*/
 use core::fmt::{Binary, Display, Formatter, LowerHex, Octal, Result, UpperHex};
 
 use super::*;
