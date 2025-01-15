@@ -110,11 +110,11 @@ where
     T: SpecificEndian<T>,
 {
     /// Returns the raw data stored in the struct.
-    pub fn to_bits(&self) -> T {
+    pub const fn to_bits(&self) -> T {
         self.0
     }
     /// Imports the data raw into a BigEndian<T> struct.
-    pub fn from_bits(v: T) -> Self {
+    pub const fn from_bits(v: T) -> Self {
         Self(v)
     }
     /// Converts the data to the same type T in host-native endian.
@@ -139,11 +139,11 @@ where
     T: SpecificEndian<T>,
 {
     /// Returns the raw data stored in the struct.
-    pub fn to_bits(&self) -> T {
+    pub const fn to_bits(&self) -> T {
         self.0
     }
     /// Imports the data raw into a LittleEndian<T> struct.
-    pub fn from_bits(v: T) -> Self {
+    pub const fn from_bits(v: T) -> Self {
         Self(v)
     }
     /// Converts the data to the same type T in host-native endian.
