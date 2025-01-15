@@ -3,8 +3,11 @@ use super::*;
 use core::ops::Neg;
 
 macro_rules! add_neg_ops {
-    ($wrap_ty:ty) => {
-        impl Neg for $wrap_ty {
+    ($wrap_ty:ident) => {
+        impl<T> Neg for $wrap_ty<T>
+        where
+            T: Neg<Output = T> + SpecificEndian<T>,
+        {
             type Output = Self;
 
             fn neg(self) -> Self {
@@ -14,53 +17,8 @@ macro_rules! add_neg_ops {
     };
 }
 
-#[cfg(feature = "big_endian")]
-mod be {
-    use super::*;
-    #[cfg(feature = "byte_impls")]
-    add_neg_ops!(BigEndian<i8>);
-
-    #[cfg(feature = "integer_impls")]
-    mod integers {
-        use super::*;
-        add_neg_ops!(BigEndian<i16>);
-        add_neg_ops!(BigEndian<i32>);
-        add_neg_ops!(BigEndian<i64>);
-        add_neg_ops!(BigEndian<i128>);
-        add_neg_ops!(BigEndian<isize>);
-    }
-
-    #[cfg(feature = "float_impls")]
-    mod floats {
-        use super::*;
-        add_neg_ops!(BigEndian<f32>);
-        add_neg_ops!(BigEndian<f64>);
-    }
-}
-
-#[cfg(feature = "little_endian")]
-mod le {
-    use super::*;
-    #[cfg(feature = "byte_impls")]
-    add_neg_ops!(LittleEndian<i8>);
-
-    #[cfg(feature = "integer_impls")]
-    mod integers {
-        use super::*;
-        add_neg_ops!(LittleEndian<i16>);
-        add_neg_ops!(LittleEndian<i32>);
-        add_neg_ops!(LittleEndian<i64>);
-        add_neg_ops!(LittleEndian<i128>);
-        add_neg_ops!(LittleEndian<isize>);
-    }
-
-    #[cfg(feature = "float_impls")]
-    mod floats {
-        use super::*;
-        add_neg_ops!(LittleEndian<f32>);
-        add_neg_ops!(LittleEndian<f64>);
-    }
-}
+add_neg_ops!(LittleEndian);
+add_neg_ops!(BigEndian);
 
 #[cfg(test)]
 mod tests {
