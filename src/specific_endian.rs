@@ -73,6 +73,64 @@ mod integer_impls {
     make_specific_endian_integer!(isize);
 }
 
+#[cfg(feature = "non_zero_impls")]
+mod non_zero {
+    use super::*;
+    use core::num::{
+        NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize, NonZeroU16, NonZeroU32,
+        NonZeroU64, NonZeroU8, NonZeroUsize,
+    };
+
+    macro_rules! make_specific_non_zero {
+        ($wrap_ty:ty) => {
+            impl SpecificEndian<$wrap_ty> for $wrap_ty {
+                fn to_big_endian(&self) -> $wrap_ty {
+                    unsafe {
+                        // Safety: endian conversion can only lead to 0 if self is already 0,
+                        // but self is NonZero
+                        Self::new_unchecked(self.get().to_be())
+                    }
+                }
+
+                fn to_little_endian(&self) -> $wrap_ty {
+                    unsafe {
+                        // Safety: endian conversion can only lead to 0 if self is already 0,
+                        // but self is NonZero
+                        Self::new_unchecked(self.get().to_le())
+                    }
+                }
+
+                fn from_big_endian(&self) -> $wrap_ty {
+                    unsafe {
+                        // Safety: endian conversion can only lead to 0 if self is already 0,
+                        // but self is NonZero
+                        Self::new_unchecked(self.get().from_big_endian())
+                    }
+                }
+
+                fn from_little_endian(&self) -> $wrap_ty {
+                    unsafe {
+                        // Safety: endian conversion can only lead to 0 if self is already 0,
+                        // but self is NonZero
+                        Self::new_unchecked(self.get().from_little_endian())
+                    }
+                }
+            }
+        };
+    }
+
+    make_specific_non_zero!(NonZeroU8);
+    make_specific_non_zero!(NonZeroU16);
+    make_specific_non_zero!(NonZeroU32);
+    make_specific_non_zero!(NonZeroU64);
+    make_specific_non_zero!(NonZeroUsize);
+    make_specific_non_zero!(NonZeroI8);
+    make_specific_non_zero!(NonZeroI16);
+    make_specific_non_zero!(NonZeroI32);
+    make_specific_non_zero!(NonZeroI64);
+    make_specific_non_zero!(NonZeroIsize);
+}
+
 #[cfg(feature = "float_impls")]
 mod float_impls {
     use super::*;
@@ -110,11 +168,11 @@ where
     T: SpecificEndian<T>,
 {
     /// Returns the raw data stored in the struct.
-    pub fn to_bits(&self) -> T {
+    pub const fn to_bits(&self) -> T {
         self.0
     }
     /// Imports the data raw into a BigEndian<T> struct.
-    pub fn from_bits(v: T) -> Self {
+    pub const fn from_bits(v: T) -> Self {
         Self(v)
     }
     /// Converts the data to the same type T in host-native endian.
@@ -139,11 +197,11 @@ where
     T: SpecificEndian<T>,
 {
     /// Returns the raw data stored in the struct.
-    pub fn to_bits(&self) -> T {
+    pub const fn to_bits(&self) -> T {
         self.0
     }
     /// Imports the data raw into a LittleEndian<T> struct.
-    pub fn from_bits(v: T) -> Self {
+    pub const fn from_bits(v: T) -> Self {
         Self(v)
     }
     /// Converts the data to the same type T in host-native endian.
