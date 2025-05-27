@@ -21,7 +21,8 @@ bencher = "0.1.5"
 
 [features]
 default = ["bitwise", "comparisons", "format", "math_ops",
-    "neg_ops", "shift_ops", "both_endian", "float_impls", "integer_impls", "byte_impls"]
+    "neg_ops", "shift_ops", "both_endian", "float_impls", "integer_impls", "byte_impls",
+    "non_zero_impls"]
 bitwise = ["integer_impls"]
 comparisons = []
 format = []
@@ -34,3 +35,4 @@ both_endian = ["big_endian", "little_endian"]
 float_impls = ["integer_impls"]
 integer_impls = []
 byte_impls = []
+non_zero_impls = ["integer_impls"]
