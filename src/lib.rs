@@ -108,8 +108,7 @@ fn main() -> Result<(), Error> {
 ```
 
 */
-#[warn(soft_unstable)]
-
+#![warn(soft_unstable)]
 /// The main part of the library.  Contains the trait SpecificEndian<T> and BigEndian<T> and LittleEndian<T> structs, as well as the
 /// implementation of those on the primitive types.
 mod specific_endian;

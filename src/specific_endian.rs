@@ -1,4 +1,5 @@
 /// Any object implementing `SpecificEndian<T>` can be converted between big and little endian.  Implement this trait to allow for endian conversion by this crate.
+#[allow(clippy::wrong_self_convention)]
 pub trait SpecificEndian<T>
 where
     Self: Into<T> + Clone + Copy,
@@ -471,7 +472,7 @@ mod tests {
             }
             fn to_little_endian(&self) -> Self {
                 match self {
-                    EndianAwareExample::LittleEndianFunction(_0) => *self,
+                    EndianAwareExample::LittleEndianFunction(_v) => *self,
                     EndianAwareExample::BigEndianFunction(v) => {
                         EndianAwareExample::BigEndianFunction(v.to_little_endian())
                     }
@@ -479,7 +480,7 @@ mod tests {
             }
             fn from_big_endian(&self) -> Self {
                 match self {
-                    EndianAwareExample::BigEndianFunction(_0) => *self,
+                    EndianAwareExample::BigEndianFunction(_v) => *self,
                     EndianAwareExample::LittleEndianFunction(v) => {
                         EndianAwareExample::BigEndianFunction(v.to_big_endian())
                     }
