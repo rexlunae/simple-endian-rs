@@ -353,7 +353,7 @@ mod tests {
     #[test]
     fn store_be() {
         let be: BigEndian<u64> = 0xfe.into();
-        if cfg!(byte_order = "big endian") {
+        if cfg!(target_endian = "big") {
             assert_eq!(be.to_bits(), 0xfe);
         } else {
             assert_eq!(be.to_bits(), 0xfe00000000000000);
@@ -368,7 +368,7 @@ mod tests {
     #[test]
     fn store_le() {
         let le: LittleEndian<u64> = 0xfe.into();
-        if cfg!(byte_order = "big endian") {
+        if cfg!(target_endian = "big") {
             assert_eq!(le.to_bits(), 0xfe00000000000000);
         } else {
             assert_eq!(le.to_bits(), 0xfe);
@@ -398,7 +398,7 @@ mod tests {
     #[test]
     fn store_fp_be() {
         let be1 = BigEndian::<f64>::from(1234.5678);
-        if cfg!(byte_order = "little endian") {
+        if cfg!(target_endian = "little") {
             assert_ne!(1234.5678, be1.to_bits());
         }
         assert_eq!(1234.5678, f64::from(be1));
@@ -407,7 +407,7 @@ mod tests {
     #[test]
     fn store_fp_le() {
         let le1 = LittleEndian::<f64>::from(1234.5678);
-        if cfg!(byte_order = "big endian") {
+        if cfg!(target_endian = "big") {
             assert_ne!(1234.5678, le1.to_bits());
         }
         assert_eq!(1234.5678, f64::from(le1));
