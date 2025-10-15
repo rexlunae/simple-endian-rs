@@ -1,4 +1,4 @@
-#![cfg_attr(not(test), no_std)]
+#![cfg_attr(all(not(test), not(any(feature = "io-std", feature = "io"))), no_std)]
 /*!
 Many byte-order-handling libraries focus on providing code to convert to and from big- or little-endian.  However,
 this requires users of those libraries to use a lot of explicit logic.  This library uses the Rust type system to
@@ -30,7 +30,7 @@ Trying to write `bp.a = new_a;` causes an error because the type u64 can't be di
 
 Of course, just storing things in memory isn't that useful unless you write somewhere.
 
-```rust
+```rust,no_run
 use simple_endian::*;
 use std::fs::File;
 use std::io::prelude::*;
@@ -62,7 +62,7 @@ fn main() -> std::io::Result<()> {
 
 You'll need to add memmap to your Cargo.toml to get this to actually work:
 
-```rust
+```rust,no_run
 extern crate memmap;
 
 use std::{
@@ -141,3 +141,13 @@ mod formatting_ops;
 /// The shorthand types (e.g u64be, f32le, etc)
 mod shorthand_types;
 pub use shorthand_types::*;
+
+/// Optional IO helpers gated by the `io` feature.
+#[cfg(any(feature = "io-core", feature = "io-std"))]
+mod io;
+
+#[cfg(feature = "io-core")]
+pub use io::core_io::*;
+
+#[cfg(feature = "io-std")]
+pub use io::std_io::*;

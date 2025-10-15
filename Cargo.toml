@@ -1,8 +1,8 @@
 [package]
 name = "simple_endian"
-version = "0.3.2"
+version = "0.3.3"
 authors = ["Erica Stith <rexlunae@gmail.com>"]
-edition = "2021"
+edition = "2024"
 license = "MIT"
 description = "A create for defining endianness within your data structures, to make handling portable data structures simpler."
 repository = "https://github.com/rexlunae/simple-endian-rs"
@@ -34,3 +34,6 @@ both_endian = ["big_endian", "little_endian"]
 float_impls = ["integer_impls"]
 integer_impls = []
 byte_impls = []
+io-core = []
+io-std = ["io-core"]
+io = ["io-std"]

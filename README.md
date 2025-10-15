@@ -172,3 +172,49 @@ This crate allows for the manipulation of specific-endian structures in memory. 
 * [persistance](https://crates.io/crates/persistence) - A library that wraps structs in mmap, and can be used well with this to make those structs portable.
 * [endian-type](https://crates.io/crates/endian-type) - The endian-type library.  This appears to be essentially the same approach as this crate, but contains less functionality.
 * [endian-types](https://crates.io/crates/endian-types) - Another very similar approach.
+
+## IO helpers (feature: `io`)
+
+This crate provides optional, feature-gated IO helpers for reading and writing endian-aware values directly from `Read`/`Write` streams. Enable them by adding the `io` feature in your `Cargo.toml`:
+
+```toml
+[dependencies.simple_endian]
+version = "0.3"
+features = ["io"]
+```
+
+The `io` feature enables `std` for this crate (the library remains `#![no_std]` when the feature is not enabled) and exposes the following helpers in `simple_endian::io`:
+
+- `read_specific<R, E>(reader: &mut R) -> io::Result<E>` — Read an endian-wrapped value of type `E` (for example `BigEndian<u32>`) from `reader`.
+- `write_specific<W, E>(writer: &mut W, v: &E) -> io::Result<()>` — Write the endian-wrapped value to `writer`.
+
+Additionally, helper traits are provided so types can implement custom read/write behavior:
+
+- `EndianRead` — types implementing this expose `read_from<R: Read>(reader: &mut R) -> io::Result<Self>`.
+- `EndianWrite` — types implementing this expose `write_to<W: Write>(&self, writer: &mut W) -> io::Result<()>`.
+
+Big- and Little-endian wrappers implement those traits for the built-in types, so you can use the generic functions like this:
+
+```rust
+use simple_endian::io::{read_specific, write_specific};
+use simple_endian::*;
+use std::io::Cursor;
+
+fn example() -> std::io::Result<()> {
+  let val: BigEndian<u32> = 0x12345678u32.into();
+  let mut buf = Vec::new();
+  write_specific(&mut buf, &val)?;
+
+  let mut cur = Cursor::new(buf);
+  let out: BigEndian<u32> = read_specific(&mut cur)?;
+  assert_eq!(out.to_native(), 0x12345678u32);
+  Ok(())
+}
+```
+
+Notes
+- The current implementation supports types with sizes 1, 2, 4, 8 and 16 bytes (integers and floats). Attempts to read/write unsupported sizes return an `io::Error`.
+- Internally the implementation uses low-level conversions to reconstruct values from bytes; the code uses `unsafe` `transmute_copy` in places for genericity. If you need a fully safe approach, we can add a small trait to provide safe byte conversions for each supported `T`.
+- Extensive unit tests for the IO helpers are included and run when you enable the `io` feature (`cargo test --features io`).
+
+If you'd like, I can add example snippets to the crate root docs or add a dedicated `examples/` folder demonstrating reading/writing structs with mixed endian fields.
