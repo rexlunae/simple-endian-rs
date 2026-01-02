@@ -1,6 +1,6 @@
 #![cfg(all(feature = "derive", feature = "io-std", feature = "text_all"))]
 
-use simple_endian::{Endianize, FixedUtf16BeSpacePadded};
+use simple_endian::Endianize;
 use simple_endian::{read_specific, write_specific};
 use std::io::Cursor;
 
@@ -33,7 +33,9 @@ fn derived_wire_struct_round_trips_via_io() {
 
     assert_eq!(out.id.to_native(), pkt.id.to_native());
 
-    // For the fixed title, compare raw code units (space padded).
-    let expected: FixedUtf16BeSpacePadded<8> = "HI".try_into().unwrap();
-    assert_eq!(out.title, expected);
+    // For fixed text, assert semantic value, not internal wrapper bits.
+    // (The wire encoding is standardized to UTF-16BE bytes; the wrapper's stored
+    // representation is an internal detail.)
+    let title = String::try_from(&out.title).unwrap();
+    assert_eq!(title, "HI");
 }

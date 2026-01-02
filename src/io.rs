@@ -285,8 +285,17 @@ pub mod core_io {
             let mut i = 0;
             while i < N {
                 let base = 2 * i;
-                let v = u16::from_be_bytes([data[base], data[base + 1]]);
-                out[i] = crate::BigEndian::<u16>::from_bits(v);
+                // Parse standard UTF-16BE wire bytes into a native scalar.
+                let native = u16::from_be_bytes([data[base], data[base + 1]]);
+                // Store as correctly endian-tagged bits.
+                #[cfg(target_endian = "big")]
+                {
+                    out[i] = crate::BigEndian::<u16>::from_bits(native);
+                }
+                #[cfg(target_endian = "little")]
+                {
+                    out[i] = crate::BigEndian::<u16>::from_bits(native.swap_bytes());
+                }
                 i += 1;
             }
 
@@ -295,7 +304,8 @@ pub mod core_io {
 
         fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
             for cu in self.as_units() {
-                out.extend(core::iter::IntoIterator::into_iter(cu.to_bits().to_be_bytes()));
+                // Serialize the *native scalar* as UTF-16BE on the wire.
+                out.extend(core::iter::IntoIterator::into_iter(cu.to_native().to_be_bytes()));
             }
             Ok(())
         }
@@ -312,8 +322,17 @@ pub mod core_io {
             let mut i = 0;
             while i < N {
                 let base = 2 * i;
-                let v = u16::from_le_bytes([data[base], data[base + 1]]);
-                out[i] = crate::LittleEndian::<u16>::from_bits(v);
+                // Parse standard UTF-16LE wire bytes into a native scalar.
+                let native = u16::from_le_bytes([data[base], data[base + 1]]);
+                // Store as correctly endian-tagged bits.
+                #[cfg(target_endian = "little")]
+                {
+                    out[i] = crate::LittleEndian::<u16>::from_bits(native);
+                }
+                #[cfg(target_endian = "big")]
+                {
+                    out[i] = crate::LittleEndian::<u16>::from_bits(native.swap_bytes());
+                }
                 i += 1;
             }
 
@@ -322,7 +341,8 @@ pub mod core_io {
 
         fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
             for cu in self.as_units() {
-                out.extend(core::iter::IntoIterator::into_iter(cu.to_bits().to_le_bytes()));
+                // Serialize the *native scalar* as UTF-16LE on the wire.
+                out.extend(core::iter::IntoIterator::into_iter(cu.to_native().to_le_bytes()));
             }
             Ok(())
         }
@@ -339,8 +359,17 @@ pub mod core_io {
             let mut i = 0;
             while i < N {
                 let base = 4 * i;
-                let v = u32::from_be_bytes([data[base], data[base + 1], data[base + 2], data[base + 3]]);
-                out[i] = crate::BigEndian::<u32>::from_bits(v);
+                // Parse standard UTF-32BE wire bytes into a native scalar.
+                let native = u32::from_be_bytes([data[base], data[base + 1], data[base + 2], data[base + 3]]);
+                // Store as correctly endian-tagged bits.
+                #[cfg(target_endian = "big")]
+                {
+                    out[i] = crate::BigEndian::<u32>::from_bits(native);
+                }
+                #[cfg(target_endian = "little")]
+                {
+                    out[i] = crate::BigEndian::<u32>::from_bits(native.swap_bytes());
+                }
                 i += 1;
             }
 
@@ -349,7 +378,8 @@ pub mod core_io {
 
         fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
             for cu in self.as_units() {
-                out.extend(core::iter::IntoIterator::into_iter(cu.to_bits().to_be_bytes()));
+                // Serialize the *native scalar* as UTF-32BE on the wire.
+                out.extend(core::iter::IntoIterator::into_iter(cu.to_native().to_be_bytes()));
             }
             Ok(())
         }
@@ -366,8 +396,17 @@ pub mod core_io {
             let mut i = 0;
             while i < N {
                 let base = 4 * i;
-                let v = u32::from_le_bytes([data[base], data[base + 1], data[base + 2], data[base + 3]]);
-                out[i] = crate::LittleEndian::<u32>::from_bits(v);
+                // Parse standard UTF-32LE wire bytes into a native scalar.
+                let native = u32::from_le_bytes([data[base], data[base + 1], data[base + 2], data[base + 3]]);
+                // Store as correctly endian-tagged bits.
+                #[cfg(target_endian = "little")]
+                {
+                    out[i] = crate::LittleEndian::<u32>::from_bits(native);
+                }
+                #[cfg(target_endian = "big")]
+                {
+                    out[i] = crate::LittleEndian::<u32>::from_bits(native.swap_bytes());
+                }
                 i += 1;
             }
 
@@ -376,7 +415,8 @@ pub mod core_io {
 
         fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
             for cu in self.as_units() {
-                out.extend(core::iter::IntoIterator::into_iter(cu.to_bits().to_le_bytes()));
+                // Serialize the *native scalar* as UTF-32LE on the wire.
+                out.extend(core::iter::IntoIterator::into_iter(cu.to_native().to_le_bytes()));
             }
             Ok(())
         }

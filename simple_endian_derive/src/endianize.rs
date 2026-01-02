@@ -89,6 +89,28 @@ fn has_text_attr(attrs: &[Attribute]) -> bool {
     attrs.iter().any(|a| a.path().is_ident("text"))
 }
 
+fn is_fixed_text_wire_type(ty: &syn::Type) -> bool {
+    // Heuristic: if a user explicitly uses one of our fixed UTF wire leaf types
+    // (which already incorporate endian via their internal code units), we
+    // should NOT wrap it in BigEndian/LittleEndian.
+    //
+    // This keeps `#[derive(Endianize)]` usable for structs that want to spell
+    // the field type directly instead of using `#[text(...)]`.
+    let syn::Type::Path(p) = ty else { return false };
+    let Some(seg) = p.path.segments.last() else { return false };
+    matches!(
+        seg.ident.to_string().as_str(),
+        "FixedUtf16BeNullPadded"
+            | "FixedUtf16BeSpacePadded"
+            | "FixedUtf16LeNullPadded"
+            | "FixedUtf16LeSpacePadded"
+            | "FixedUtf32BeNullPadded"
+            | "FixedUtf32BeSpacePadded"
+            | "FixedUtf32LeNullPadded"
+            | "FixedUtf32LeSpacePadded"
+    )
+}
+
 fn parse_text_attr(attrs: &[Attribute]) -> Result<(TextEncoding, usize, TextPad), Error> {
     // Supported:
     //   #[text(utf16, units = 16, pad = "space")]
@@ -218,12 +240,14 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                                     quote!(::simple_endian::FixedUtf32LeSpacePadded<#units_lit>)
                                 }
                             }
+                        } else if is_fixed_text_wire_type(ty) {
+                            quote!(#ty)
                         } else {
                             // Default: wrap the user-specified field type in the container endian.
                             quote!(#wrapper_path<#ty>)
                         };
 
-                        wire_fields.push(quote!(#f_ident: #wire_ty));
+                        wire_fields.push(quote!(pub #f_ident: #wire_ty));
                     }
 
                     quote!({
@@ -371,11 +395,13 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                                         quote!(::simple_endian::FixedUtf32LeSpacePadded<#units_lit>)
                                     }
                                 }
+                            } else if is_fixed_text_wire_type(ty) {
+                                quote!(#ty)
                             } else {
                                 quote!(#wrapper_path<#ty>)
                             };
 
-                            field_defs.push(quote!(#f_ident: #wire_ty));
+                            field_defs.push(quote!(pub #f_ident: #wire_ty));
                             reads.push(quote!(#f_ident: ::simple_endian::read_specific(reader)?));
                             writes.push(quote!(::simple_endian::write_specific(writer, &payload.#f_ident)?;));
                         }

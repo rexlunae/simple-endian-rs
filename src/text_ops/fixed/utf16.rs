@@ -492,13 +492,26 @@ impl<const N: usize> TryFrom<&str> for FixedUtf16LeSpacePadded<N> {
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let mut it = s.encode_utf16();
-        let mut units = [LittleEndian::from_bits(0x0020u16); N];
+        // Like the UTF-32 fixed text helpers, we store raw bits tagged with the
+        // specified endianness. That means on big-endian hosts we must pre-swap
+        // for LE storage so that `.to_native()` returns the intended scalar.
+        let space_bits = if cfg!(target_endian = "big") {
+            0x0020u16.swap_bytes()
+        } else {
+            0x0020u16
+        };
+        let mut units = [LittleEndian::from_bits(space_bits); N];
         let mut i = 0usize;
 
         while i < N {
             match it.next() {
                 Some(cu) => {
-                    units[i] = LittleEndian::from_bits(cu);
+                    let bits = if cfg!(target_endian = "big") {
+                        cu.swap_bytes()
+                    } else {
+                        cu
+                    };
+                    units[i] = LittleEndian::from_bits(bits);
                     i += 1;
                 }
                 None => break,
@@ -521,13 +534,24 @@ impl<const N: usize> TryFrom<&str> for FixedUtf16BeSpacePadded<N> {
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let mut it = s.encode_utf16();
-        let mut units = [BigEndian::from_bits(0x0020u16); N];
+        // Pre-swap on little-endian hosts for BE storage.
+        let space_bits = if cfg!(target_endian = "little") {
+            0x0020u16.swap_bytes()
+        } else {
+            0x0020u16
+        };
+        let mut units = [BigEndian::from_bits(space_bits); N];
         let mut i = 0usize;
 
         while i < N {
             match it.next() {
                 Some(cu) => {
-                    units[i] = BigEndian::from_bits(cu);
+                    let bits = if cfg!(target_endian = "little") {
+                        cu.swap_bytes()
+                    } else {
+                        cu
+                    };
+                    units[i] = BigEndian::from_bits(bits);
                     i += 1;
                 }
                 None => break,

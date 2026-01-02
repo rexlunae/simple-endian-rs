@@ -474,13 +474,26 @@ impl<const N: usize> TryFrom<&str> for FixedUtf32LeSpacePadded<N> {
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let mut it = s.chars();
-        let mut units = [LittleEndian::from_bits(0x0020u32); N];
+        // SpecificEndian wrappers store the raw bits in the specified endianness.
+        // We want the *native scalar value* to survive a `.to_native()` call.
+        // That means we must pre-swap on big-endian hosts for LE storage.
+        let space_bits = if cfg!(target_endian = "big") {
+            0x0020u32.swap_bytes()
+        } else {
+            0x0020u32
+        };
+        let mut units = [LittleEndian::from_bits(space_bits); N];
         let mut i = 0usize;
 
         while i < N {
             match it.next() {
                 Some(ch) => {
-                    units[i] = LittleEndian::from_bits(ch as u32);
+                    let bits = if cfg!(target_endian = "big") {
+                        (ch as u32).swap_bytes()
+                    } else {
+                        ch as u32
+                    };
+                    units[i] = LittleEndian::from_bits(bits);
                     i += 1;
                 }
                 None => break,
@@ -503,13 +516,24 @@ impl<const N: usize> TryFrom<&str> for FixedUtf32BeSpacePadded<N> {
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         let mut it = s.chars();
-        let mut units = [BigEndian::from_bits(0x0020u32); N];
+        // Pre-swap on little-endian hosts for BE storage.
+        let space_bits = if cfg!(target_endian = "little") {
+            0x0020u32.swap_bytes()
+        } else {
+            0x0020u32
+        };
+        let mut units = [BigEndian::from_bits(space_bits); N];
         let mut i = 0usize;
 
         while i < N {
             match it.next() {
                 Some(ch) => {
-                    units[i] = BigEndian::from_bits(ch as u32);
+                    let bits = if cfg!(target_endian = "little") {
+                        (ch as u32).swap_bytes()
+                    } else {
+                        ch as u32
+                    };
+                    units[i] = BigEndian::from_bits(bits);
                     i += 1;
                 }
                 None => break,
