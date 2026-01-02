@@ -11,8 +11,14 @@ mod utf16;
 #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
 mod utf32;
 
+#[cfg(all(feature = "text_fixed", feature = "text_utf8"))]
+pub mod utf8;
+
 #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
 pub use utf16::*;
+
+#[cfg(all(feature = "text_fixed", feature = "text_utf8"))]
+pub use utf8::*;
 
 #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
 pub use utf32::*;
@@ -155,7 +161,7 @@ impl<const N: usize> From<&FixedCodepointString<N>> for String {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "text_utf16", feature = "text_utf32"))]
 mod tests {
     use super::*;
     use crate::{BigEndian, LittleEndian};

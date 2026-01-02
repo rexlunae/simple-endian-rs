@@ -59,10 +59,14 @@
 //!
 //! This module is only compiled when its corresponding Cargo features are enabled:
 //!
+//! * `text_utf8` – enables UTF-8 helper types.
 //! * `text_utf16` – enables UTF-16 helper types.
 //! * `text_utf32` – enables UTF-32 helper types.
 //! * `text_fixed` – enables fixed-codepoint / fixed-code-unit, inline strings.
 //! * `text_all` – convenience feature enabling all of the above.
+
+#[cfg(feature = "text_utf8")]
+pub mod utf8;
 
 #[cfg(feature = "text_utf16")]
 mod utf16;
@@ -72,6 +76,8 @@ mod utf32;
 
 #[cfg(feature = "text_fixed")]
 mod fixed;
+
+// `utf8` is a public module; users can access it as `text_ops::utf8::*`.
 
 #[cfg(feature = "text_utf16")]
 pub use utf16::*;

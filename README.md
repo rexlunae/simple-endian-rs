@@ -17,7 +17,7 @@ At the core, you declare endianness in the **data definition** (`BigEndian<T>`, 
 Optional features expand this into a full wire-format toolkit:
 
 * `derive`: generate `*Wire` helper types from logical structs/enums (stable layout, endian-correct fields)
-* `io-std` / `io-core`: `read_specific` / `write_specific` for endian-aware IO
+* `io-std` / `io-core`: `read_specific` / `write_specific` for safe endian-aware IO with binary structures.
 * `text_*`: fixed-size UTF-16/UTF-32 helpers for formats that standardize on those encodings (e.g. UTF-16LE)
 
 The crate is designed to be lightweight and supports `#![no_std]` (derive/IO/text are feature-gated).
@@ -43,6 +43,7 @@ Trying to model those with Rust `String`/`&str` directly usually leads to ad-hoc
 
 Text support is opt-in:
 
+* `text_utf8`  fixed-size UTF-8 byte field helpers
 * `text_utf16`  UTF-16 code unit types and conversions
 * `text_utf32`  UTF-32 code unit types and conversions
 * `text_fixed`  fixed-size (const-generic) text field wrappers
@@ -62,6 +63,11 @@ They come in a few common padding styles, for example:
 * `FixedUtf16LeNullPadded<N>`  UTF-16LE, right-padded with NUL (`0x0000`); decoding trims trailing NULs
 
 Similar wrappers exist for BE and for UTF-32.
+
+There are also fixed-size **UTF-8 byte** field wrappers:
+
+* `FixedUtf8NullPadded<N>`  right-padded with `0x00`; decoding trims trailing NULs
+* `FixedUtf8SpacePadded<N>`  right-padded with `0x20` (space); decoding trims trailing spaces
 
 The important endianness point: **the endianness applies to the UTF code units**, not to the host.
 So `FixedUtf16Le...` is *always* little-endian on the wire, even on a big-endian CPU.
@@ -107,6 +113,35 @@ Notes:
 * Use UTF-16/UTF-32 helpers when the spec calls for them; that’s where they shine.
 * The fixed types are great for avoiding variable-length parsing and for guaranteeing layout.
 
+### Example: a fixed UTF-8 field in a wire struct
+
+This is useful for formats that store fixed-width, right-padded UTF-8 bytes.
+
+```rust
+use simple_endian::Endianize;
+
+#[derive(Endianize, Debug)]
+#[endian(be)]
+#[repr(C)]
+struct Entry {
+  id: u16,
+
+  // 8 UTF-8 bytes, padded with NULs on the wire.
+  #[text(utf8, units = 8, pad = "null")]
+  name: String,
+}
+
+fn round_trip() {
+  let wire = EntryWire {
+    id: 7u16.into(),
+    name: "ALICE".try_into().unwrap(),
+  };
+
+  let decoded: Entry = (&wire).try_into().unwrap();
+  assert_eq!(decoded.name, "ALICE");
+}
+```
+
 ## Isn’t there already a library for this?
 
 Yes, there are several that cover at least a part of this functionality. Most focus on *functions* for byte swapping / reading numbers from byte slices. A few well-known ones:
@@ -136,6 +171,29 @@ That makes it a good fit for packet formats, RPC framing, binary logs, file form
 There’s a short benchmark-driven writeup (including BE vs LE comparisons and “pure” conversion vs `std::io` overhead) in [`PERFORMANCE.md`](./PERFORMANCE.md).
 
 Note: if you’re formatting these values in hot paths, consider converting to native first (e.g. via `.to_native()`), since formatting overhead can dominate.
+
+## Binary Size Notes
+
+This crate has a lot of functionality. The easiest thing to do is enable all features....and then watch your binary size bloat. Fortunately, it's also designed to scale up and down quite a lot, so that it's suitable both for codebases that need all the features, as well as small lightweight embedded projects.
+
+For that reason, consider it a strong recommendation to use the granular feature flags for what you actually need.
+
+## Optional feature flags
+
+Most users can just use the default features and not think about it.
+
+If you care about binary size, compile times, or a smaller API surface (especially for `no_std`/embedded), this crate is designed to be “pick what you need”.
+
+Some commonly useful opt-ins:
+
+* `nonzero`: enable `core::num::NonZero*` support (including shorthand aliases like `nzu32be`, `nzi64le`).
+* `wrapping`: enable `core::num::Wrapping<T>` support.
+
+Other feature families you may care about:
+
+* `derive`: proc-macro derives for generating wire types.
+* `io-core` / `io-std`: endian-aware read/write helpers.
+* `text_utf16` / `text_utf32` / `text_fixed` (or `text_all`): fixed-width UTF helpers.
 
 ## Goals of this project
 

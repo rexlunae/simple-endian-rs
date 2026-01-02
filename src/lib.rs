@@ -1,6 +1,11 @@
 #![cfg_attr(all(not(test), not(any(feature = "io-std", feature = "io"))), no_std)]
 // Enable `alloc` types (Vec/String) for optional text helpers in this crate.
-#[cfg(any(feature = "text_utf16", feature = "text_utf32", feature = "text_fixed"))]
+#[cfg(any(
+	feature = "text_utf8",
+	feature = "text_utf16",
+	feature = "text_utf32",
+	feature = "text_fixed"
+))]
 extern crate alloc;
 
 /// Many byte-order-handling libraries focus on providing code to convert to and from big- or little-endian.  However,
@@ -122,11 +127,21 @@ pub use specific_endian::*;
 mod simple_endian;
 pub use simple_endian::SimpleEndian;
 
-/// Text/code-unit conversion helpers (UTF-16/UTF-32 and fixed-codepoint strings), behind feature flags.
-#[cfg(any(feature = "text_utf16", feature = "text_utf32", feature = "text_fixed"))]
+/// Text/code-unit conversion helpers (UTF-8/UTF-16/UTF-32 and fixed-size strings), behind feature flags.
+#[cfg(any(
+	feature = "text_utf8",
+	feature = "text_utf16",
+	feature = "text_utf32",
+	feature = "text_fixed"
+))]
 mod text_ops;
 
-#[cfg(any(feature = "text_utf16", feature = "text_utf32", feature = "text_fixed"))]
+#[cfg(any(
+	feature = "text_utf8",
+	feature = "text_utf16",
+	feature = "text_utf32",
+	feature = "text_fixed"
+))]
 pub use text_ops::*;
 
 /// Bitwise operations.  These should be equally fast in any endian.

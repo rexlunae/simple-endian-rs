@@ -525,6 +525,40 @@ pub mod core_io {
             <crate::FixedUtf32LeCodeUnits<N> as FromSlice>::write_to_extend(&self.0, out)
         }
     }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf8"))]
+    impl<const N: usize> FromSlice for crate::FixedUtf8NullPadded<N> {
+        fn read_from_slice(data: &[u8]) -> Result<Self, &'static str> {
+            if data.len() < N {
+                return Err("insufficient data");
+            }
+            let mut out = [0u8; N];
+            out.copy_from_slice(&data[..N]);
+            Ok(crate::FixedUtf8NullPadded::from(crate::FixedUtf8Bytes::from(out)))
+        }
+
+        fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
+            out.extend(self.0.as_bytes().iter().copied());
+            Ok(())
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf8"))]
+    impl<const N: usize> FromSlice for crate::FixedUtf8SpacePadded<N> {
+        fn read_from_slice(data: &[u8]) -> Result<Self, &'static str> {
+            if data.len() < N {
+                return Err("insufficient data");
+            }
+            let mut out = [0u8; N];
+            out.copy_from_slice(&data[..N]);
+            Ok(crate::FixedUtf8SpacePadded::from(crate::FixedUtf8Bytes::from(out)))
+        }
+
+        fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
+            out.extend(self.0.as_bytes().iter().copied());
+            Ok(())
+        }
+    }
 }
 
 // Std-backed Read/Write wrappers: enabled under `io-std` which depends on `io-core`.
@@ -989,6 +1023,48 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
     impl<const N: usize> EndianWrite for crate::FixedUtf32LeCodeUnits<N> {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            let mut out = Vec::new();
+            core_io::write_to_extend(self, &mut out)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            writer.write_all(&out)
+        }
+    }
+
+    // --- Fixed UTF-8 helpers (feature-gated) ---
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf8"))]
+    impl<const N: usize> EndianRead for crate::FixedUtf8NullPadded<N> {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut buf = vec![0u8; N];
+            reader.read_exact(&mut buf)?;
+            core_io::read_from_slice::<Self>(&buf)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf8"))]
+    impl<const N: usize> EndianWrite for crate::FixedUtf8NullPadded<N> {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            let mut out = Vec::new();
+            core_io::write_to_extend(self, &mut out)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            writer.write_all(&out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf8"))]
+    impl<const N: usize> EndianRead for crate::FixedUtf8SpacePadded<N> {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut buf = vec![0u8; N];
+            reader.read_exact(&mut buf)?;
+            core_io::read_from_slice::<Self>(&buf)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf8"))]
+    impl<const N: usize> EndianWrite for crate::FixedUtf8SpacePadded<N> {
         fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
             let mut out = Vec::new();
             core_io::write_to_extend(self, &mut out)

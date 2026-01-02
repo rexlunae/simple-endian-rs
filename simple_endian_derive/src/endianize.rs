@@ -21,6 +21,7 @@ impl Endian {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum TextEncoding {
+    Utf8,
     Utf16,
     Utf32,
 }
@@ -100,6 +101,9 @@ fn is_fixed_text_wire_type(ty: &syn::Type) -> bool {
     let Some(seg) = p.path.segments.last() else { return false };
     matches!(
         seg.ident.to_string().as_str(),
+        "FixedUtf8NullPadded"
+            | "FixedUtf8SpacePadded"
+            |
         "FixedUtf16BeNullPadded"
             | "FixedUtf16BeSpacePadded"
             | "FixedUtf16LeNullPadded"
@@ -144,6 +148,10 @@ fn parse_text_attr(attrs: &[Attribute]) -> Result<(TextEncoding, usize, TextPad)
     let mut pad: Option<TextPad> = None;
 
     attr.parse_nested_meta(|meta| {
+        if meta.path.is_ident("utf8") {
+            encoding = Some(TextEncoding::Utf8);
+            return Ok(());
+        }
         if meta.path.is_ident("utf16") {
             encoding = Some(TextEncoding::Utf16);
             return Ok(());
@@ -177,12 +185,12 @@ fn parse_text_attr(attrs: &[Attribute]) -> Result<(TextEncoding, usize, TextPad)
 
         Err(Error::new(
             meta.path.span(),
-            "unknown text option; expected utf16/utf32, units = N, pad = \"null\"|\"space\"",
+            "unknown text option; expected utf8/utf16/utf32, units = N, pad = \"null\"|\"space\"",
         ))
     })?;
 
     let encoding = encoding.ok_or_else(|| {
-        Error::new(attr.span(), "text encoding missing; expected utf16 or utf32")
+        Error::new(attr.span(), "text encoding missing; expected utf8, utf16, or utf32")
     })?;
     let units = units.ok_or_else(|| Error::new(attr.span(), "text units missing; expected units = N"))?;
     let pad = pad.unwrap_or(TextPad::Null);
@@ -239,6 +247,12 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                             let (enc, units, pad) = parse_text_attr(&f.attrs)?;
                             let units_lit = syn::LitInt::new(&units.to_string(), f.span());
                             match (enc, pad, endian) {
+                                (TextEncoding::Utf8, TextPad::Null, _) => {
+                                    quote!(::simple_endian::FixedUtf8NullPadded<#units_lit>)
+                                }
+                                (TextEncoding::Utf8, TextPad::Space, _) => {
+                                    quote!(::simple_endian::FixedUtf8SpacePadded<#units_lit>)
+                                }
                                 (TextEncoding::Utf16, TextPad::Null, Endian::Big) => {
                                     quote!(::simple_endian::FixedUtf16BeNullPadded<#units_lit>)
                                 }
@@ -401,6 +415,12 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                                 let (enc, units, pad) = parse_text_attr(&f.attrs)?;
                                 let units_lit = syn::LitInt::new(&units.to_string(), f.span());
                                 match (enc, pad, endian) {
+                                    (TextEncoding::Utf8, TextPad::Null, _) => {
+                                        quote!(::simple_endian::FixedUtf8NullPadded<#units_lit>)
+                                    }
+                                    (TextEncoding::Utf8, TextPad::Space, _) => {
+                                        quote!(::simple_endian::FixedUtf8SpacePadded<#units_lit>)
+                                    }
                                     (TextEncoding::Utf16, TextPad::Null, Endian::Big) => {
                                         quote!(::simple_endian::FixedUtf16BeNullPadded<#units_lit>)
                                     }
