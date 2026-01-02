@@ -619,6 +619,45 @@ pub mod std_io {
         }
     }
 
+    impl<const N: usize> EndianRead for [u8; N] {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut buf = [0u8; N];
+            reader.read_exact(&mut buf)?;
+            Ok(buf)
+        }
+    }
+
+    impl<const N: usize> EndianWrite for [u8; N] {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            writer.write_all(self)
+        }
+    }
+
+    impl<E, const N: usize> EndianRead for [E; N]
+    where
+        E: EndianRead + Copy,
+    {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut out = [E::read_from(reader)?; N];
+            for i in 1..N {
+                out[i] = E::read_from(reader)?;
+            }
+            Ok(out)
+        }
+    }
+
+    impl<E, const N: usize> EndianWrite for [E; N]
+    where
+        E: EndianWrite,
+    {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            for v in self {
+                v.write_to(writer)?;
+            }
+            Ok(())
+        }
+    }
+
     pub fn read_specific<R, E>(reader: &mut R) -> io::Result<E>
     where
         R: Read,

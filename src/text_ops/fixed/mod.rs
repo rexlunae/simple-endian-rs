@@ -24,6 +24,42 @@ pub enum FixedTextError {
     WrongCodepointCount { expected: usize, found: usize },
 }
 
+#[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+impl From<FixedUtf16Error> for FixedTextError {
+    fn from(e: FixedUtf16Error) -> Self {
+        match e {
+            FixedUtf16Error::WrongCodeUnitCount { expected, found } => {
+                FixedTextError::WrongCodepointCount {
+                    expected,
+                    found,
+                }
+            }
+            FixedUtf16Error::InvalidUtf16 => FixedTextError::WrongCodepointCount {
+                expected: 0,
+                found: 0,
+            },
+        }
+    }
+}
+
+#[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+impl From<FixedUtf32Error> for FixedTextError {
+    fn from(e: FixedUtf32Error) -> Self {
+        match e {
+            FixedUtf32Error::WrongCodeUnitCount { expected, found } => {
+                FixedTextError::WrongCodepointCount {
+                    expected,
+                    found,
+                }
+            }
+            FixedUtf32Error::InvalidUtf32 => FixedTextError::WrongCodepointCount {
+                expected: 0,
+                found: 0,
+            },
+        }
+    }
+}
+
 impl fmt::Display for FixedTextError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

@@ -111,6 +111,24 @@ fn is_fixed_text_wire_type(ty: &syn::Type) -> bool {
     )
 }
 
+fn is_u8_array_type(ty: &syn::Type) -> bool {
+    let syn::Type::Array(arr) = ty else {
+        return false;
+    };
+
+    match &*arr.elem {
+        syn::Type::Path(p) => p.path.is_ident("u8"),
+        _ => false,
+    }
+}
+
+fn array_elem_and_len(ty: &syn::Type) -> Option<(&syn::Type, &syn::Expr)> {
+    let syn::Type::Array(arr) = ty else {
+        return None;
+    };
+    Some((&*arr.elem, &arr.len))
+}
+
 fn parse_text_attr(attrs: &[Attribute]) -> Result<(TextEncoding, usize, TextPad), Error> {
     // Supported:
     //   #[text(utf16, units = 16, pad = "space")]
@@ -193,6 +211,9 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
     let wire_name = format_ident!("{}Wire", name);
 
     let mut wire_field_idents: Vec<syn::Ident> = Vec::new();
+    let mut logical_field_idents: Vec<syn::Ident> = Vec::new();
+    let mut logical_field_types: Vec<syn::Type> = Vec::new();
+    let mut logical_is_text: Vec<bool> = Vec::new();
     let mut is_union = false;
     let wire_item = match &input.data {
         Data::Struct(data) => {
@@ -207,6 +228,9 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                             .ok_or_else(|| Error::new(f.span(), "expected named field"))?;
 
                         wire_field_idents.push(f_ident.clone());
+                        logical_field_idents.push(f_ident.clone());
+                        logical_field_types.push(f.ty.clone());
+                        logical_is_text.push(has_text_attr(&f.attrs));
 
                         let ty = &f.ty;
 
@@ -242,6 +266,13 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                             }
                         } else if is_fixed_text_wire_type(ty) {
                             quote!(#ty)
+                        } else if is_u8_array_type(ty) {
+                            // Raw bytes are already wire-safe; endianness doesn't apply.
+                            quote!(#ty)
+                        } else if let Some((elem_ty, len_expr)) = array_elem_and_len(ty) {
+                            // For fixed-size arrays, apply the container endian to each element.
+                            // Example: `[u16; 8]` -> `[LittleEndian<u16>; 8]` (when #[endian(le)]).
+                            quote!([#wrapper_path<#elem_ty>; #len_expr])
                         } else {
                             // Default: wrap the user-specified field type in the container endian.
                             quote!(#wrapper_path<#ty>)
@@ -397,6 +428,12 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                                 }
                             } else if is_fixed_text_wire_type(ty) {
                                 quote!(#ty)
+                            } else if is_u8_array_type(ty) {
+                                // Raw bytes are already wire-safe; endianness doesn't apply.
+                                quote!(#ty)
+                            } else if let Some((elem_ty, len_expr)) = array_elem_and_len(ty) {
+                                // For fixed-size arrays, apply the container endian to each element.
+                                quote!([#wrapper_path<#elem_ty>; #len_expr])
                             } else {
                                 quote!(#wrapper_path<#ty>)
                             };
@@ -579,11 +616,98 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
         quote! {}
     };
 
+    // Struct conversions:
+    // - `From<Logical> for Wire` is always infallible for named-field structs because:
+    //   * endian wrappers accept `T: Into<Wrapper<T>>` via `.into()`
+    //   * fixed text wire fields support `TryFrom<&str>` / `TryFrom<String>`; the logical source is a `String`
+    //     but we convert by borrowing `&str` (may fail if it doesn't fit), so we keep this direction infallible
+    //     ONLY when there are no #[text] fields.
+    // - `TryFrom<Wire> for Logical` can fail for text fields (invalid encoding), so we model that explicitly.
+    let has_any_text = logical_is_text.iter().any(|&b| b);
+    let struct_conversions = if !wire_field_idents.is_empty() && !is_union {
+        // From<Logical> for Wire: only generate if there are no #[text] fields.
+        let from_logical_for_wire = if !has_any_text {
+            let assigns = logical_field_idents
+                .iter()
+                .zip(logical_field_types.iter())
+                .map(|(f, ty)| {
+                    if is_u8_array_type(ty) {
+                        quote!(#f: v.#f)
+                    } else if array_elem_and_len(ty).is_some() {
+                        quote!(#f: v.#f.map(::core::convert::Into::into))
+                    } else {
+                        quote!(#f: v.#f.into())
+                    }
+                });
+            quote! {
+                impl #impl_generics ::core::convert::From<#name #ty_generics> for #wire_name #ty_generics #where_clause {
+                    fn from(v: #name #ty_generics) -> Self {
+                        Self { #(#assigns,)* }
+                    }
+                }
+            }
+        } else {
+            quote! {}
+        };
+
+        // TryFrom<Wire> for Logical: always generate for structs with named fields.
+        // Numeric fields: `.to_native()`
+        // Text fields: `String::try_from(&wire_field)`
+        let try_assigns = logical_field_idents
+            .iter()
+            .zip(logical_field_types.iter())
+            .zip(logical_is_text.iter())
+            .map(|((f, ty), is_text)| {
+                if *is_text {
+                    quote!(#f: ::std::string::String::try_from(&v.#f).map_err(|e| ::simple_endian::FixedTextError::from(e))?)
+                } else if is_u8_array_type(ty) {
+                    quote!(#f: v.#f)
+                } else if array_elem_and_len(ty).is_some() {
+                    quote!(#f: v.#f.map(|x| x.to_native()))
+                } else {
+                    quote!(#f: v.#f.to_native())
+                }
+            });
+
+        // Choose error type:
+        // `String::try_from(&FixedText)` uses `simple_endian::FixedTextError`.
+        // This impl also requires `alloc` (for `String`) and `text_fixed`.
+        let try_from_wire_for_logical = if has_any_text {
+            quote! {
+                #[cfg(all(feature = "simple_string_impls", feature = "text_fixed"))]
+                impl #impl_generics ::core::convert::TryFrom<#wire_name #ty_generics> for #name #ty_generics #where_clause {
+                    type Error = ::simple_endian::FixedTextError;
+
+                    fn try_from(v: #wire_name #ty_generics) -> Result<Self, Self::Error> {
+                        Ok(Self { #(#try_assigns,)* })
+                    }
+                }
+            }
+        } else {
+            quote! {
+                impl #impl_generics ::core::convert::From<#wire_name #ty_generics> for #name #ty_generics #where_clause {
+                    fn from(v: #wire_name #ty_generics) -> Self {
+                        Self { #(#try_assigns,)* }
+                    }
+                }
+            }
+        };
+
+        quote! {
+            #from_logical_for_wire
+            #try_from_wire_for_logical
+        }
+    } else {
+        quote! {}
+    };
+
     // Note: For now we just generate the wire type + aliases. Conversions can be added next.
     let expanded = quote! {
         #wire_item
 
         #io_impls
+
+        #struct_conversions
 
         // Preserve where-clause usage for future impls.
         const _: () = {
