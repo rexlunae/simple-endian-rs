@@ -6,15 +6,24 @@
 //! - we convert using `to_native()` / `from_native()` at the boundaries
 //!
 //! Run:
-//!   cargo run --example cpu_emulator --features "io-std derive"
+//!   cargo run --example cpu_emulator --features "derive io-std"
 
-use simple_endian::BigEndian;
+#![cfg_attr(not(feature = "io-std"), allow(dead_code, unused_imports))]
 
-/// Minimal CPU state.
-///
-/// Registers are stored as *BigEndian tagged values* to model a BE CPU.
-#[derive(Debug, Clone)]
-struct Cpu {
+#![cfg_attr(not(feature = "io-std"), allow(dead_code, unused_imports))]
+
+#[cfg(feature = "io-std")]
+mod real {
+    use simple_endian::BigEndian;
+    use simple_endian::u16be;
+    use simple_endian::{read_specific, write_specific};
+    use std::io::Cursor;
+
+    /// Minimal CPU state.
+    ///
+    /// Registers are stored as *BigEndian tagged values* to model a BE CPU.
+    #[derive(Debug, Clone)]
+    struct Cpu {
     pc: BigEndian<u16>,
 
     /// General purpose registers.
@@ -27,18 +36,18 @@ struct Cpu {
     zf: u8,
 }
 
-impl Default for Cpu {
-    fn default() -> Self {
-        Self {
-            pc: 0u16.into(),
-            r0: 0u16.into(),
-            r1: 0u16.into(),
-            r2: 0u16.into(),
-            r3: 0u16.into(),
-            zf: 0,
+    impl Default for Cpu {
+        fn default() -> Self {
+            Self {
+                pc: 0u16.into(),
+                r0: 0u16.into(),
+                r1: 0u16.into(),
+                r2: 0u16.into(),
+                r3: 0u16.into(),
+                zf: 0,
+            }
         }
     }
-}
 
 /// Instruction encoding (2 bytes / 1 word):
 ///
@@ -54,8 +63,8 @@ impl Default for Cpu {
 /// - 0x40:        CMP r0, r2     (zf = (r0 == r2))
 /// - 0x50:        JZ addr        (if zf==1, pc = addr)
 /// - 0xFF:        HALT
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Op {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum Op {
     Ldi { reg: u8, imm: u8 },
     Add { lhs: u8, rhs: u8 },
     Store { reg: u8, addr: u8 },
@@ -65,7 +74,7 @@ enum Op {
     Halt,
 }
 
-fn decode(word: [u8; 2]) -> Result<Op, String> {
+    fn decode(word: [u8; 2]) -> Result<Op, String> {
     let op = word[0];
     let b = word[1];
     match op {
@@ -84,8 +93,8 @@ fn decode(word: [u8; 2]) -> Result<Op, String> {
     }
 }
 
-impl Cpu {
-    fn get_reg(&self, r: u8) -> BigEndian<u16> {
+    impl Cpu {
+        fn get_reg(&self, r: u8) -> BigEndian<u16> {
         match r {
             0 => self.r0,
             1 => self.r1,
@@ -95,7 +104,7 @@ impl Cpu {
         }
     }
 
-    fn set_reg(&mut self, r: u8, v: BigEndian<u16>) {
+        fn set_reg(&mut self, r: u8, v: BigEndian<u16>) {
         match r {
             0 => self.r0 = v,
             1 => self.r1 = v,
@@ -105,7 +114,7 @@ impl Cpu {
         }
     }
 
-    fn fetch(&mut self, mem: &[u8]) -> Result<[u8; 2], String> {
+        fn fetch(&mut self, mem: &[u8]) -> Result<[u8; 2], String> {
         let pc = self.pc.to_native() as usize;
         if pc + 2 > mem.len() {
             return Err("pc out of bounds".into());
@@ -115,7 +124,7 @@ impl Cpu {
         Ok(w)
     }
 
-    fn step(&mut self, mem: &mut [u8]) -> Result<bool, String> {
+        fn step(&mut self, mem: &mut [u8]) -> Result<bool, String> {
         let word = self.fetch(mem)?;
         let op = decode(word)?;
 
@@ -136,17 +145,20 @@ impl Cpu {
                 if a + 2 > mem.len() {
                     return Err("store out of bounds".into());
                 }
-                // Store BE bytes to memory.
-                mem[a..a + 2].copy_from_slice(&v.to_native().to_be_bytes());
+                // Store BE u16 to memory using crate IO.
+                let mut cur = Cursor::new(&mut mem[a..a + 2]);
+                let wire: u16be = v.to_native().into();
+                write_specific(&mut cur, &wire).map_err(|e| e.to_string())?;
             }
             Op::Load { reg, addr } => {
                 let a = addr as usize;
                 if a + 2 > mem.len() {
                     return Err("load out of bounds".into());
                 }
-                // Load BE bytes from memory into a BE register.
-                let native = u16::from_be_bytes([mem[a], mem[a + 1]]);
-                self.set_reg(reg, native.into());
+                // Load BE u16 from memory into a BE register using crate IO.
+                let mut cur = Cursor::new(&mem[a..a + 2]);
+                let wire: u16be = read_specific(&mut cur).map_err(|e| e.to_string())?;
+                self.set_reg(reg, wire.to_native().into());
             }
             Op::Cmp { a, b } => {
                 let x = self.get_reg(a).to_native();
@@ -164,9 +176,9 @@ impl Cpu {
 
         Ok(true)
     }
-}
+    }
 
-fn main() {
+    pub fn run() {
     // A tiny program that demonstrates BE registers and BE memory operations:
     //
     // 0x0000: LDI r0, 0x01
@@ -200,16 +212,34 @@ fn main() {
         }
     }
 
-    let mem_word = u16::from_be_bytes([mem[0x10], mem[0x11]]);
+    let mem_word: u16 = {
+        let mut cur = Cursor::new(&mem[0x10..0x12]);
+        let wire: u16be = read_specific(&mut cur).expect("read u16be from memory");
+        wire.to_native()
+    };
 
-    println!("Final CPU state: {cpu:?}");
-    println!(
-        "r0(native)={}, r2(native)={}, zf={}, mem[0x10..0x12]=[{:#04X} {:#04X}] (u16BE={})",
-        cpu.r0.to_native(),
-        cpu.r2.to_native(),
-        cpu.zf,
-        mem[0x10],
-        mem[0x11],
-        mem_word
-    );
+        println!("Final CPU state: {cpu:?}");
+        println!(
+            "r0(native)={}, r2(native)={}, zf={}, mem[0x10..0x12]=[{:#04X} {:#04X}] (u16BE={})",
+            cpu.r0.to_native(),
+            cpu.r2.to_native(),
+            cpu.zf,
+            mem[0x10],
+            mem[0x11],
+            mem_word
+        );
+}
+
+}
+
+#[cfg(feature = "io-std")]
+fn main() {
+	real::run();
+}
+
+#[cfg(not(feature = "io-std"))]
+fn main() {
+	eprintln!(
+		"This example requires feature: io-std\n\n  cargo run --example cpu_emulator --features \"io-std\""
+	);
 }
