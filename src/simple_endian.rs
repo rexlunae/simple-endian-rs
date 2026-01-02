@@ -142,13 +142,13 @@ mod tests {
         let s = String::from("hello");
         let converted = s.clone().to_big_endian();
         assert_eq!(converted, s);
-        
+
         let converted = s.clone().to_little_endian();
         assert_eq!(converted, s);
-        
+
         let converted = s.clone().from_big_endian();
         assert_eq!(converted, s);
-        
+
         let converted = s.clone().from_little_endian();
         assert_eq!(converted, s);
     }
