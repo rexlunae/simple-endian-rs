@@ -271,6 +271,220 @@ pub mod core_io {
             }
         }
     }
+
+    // --- Fixed UTF helpers (feature-gated) ---
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> FromSlice for crate::FixedUtf16BeCodeUnits<N> {
+        fn read_from_slice(data: &[u8]) -> Result<Self, &'static str> {
+            if data.len() < 2 * N {
+                return Err("insufficient data");
+            }
+
+            let mut out = [crate::BigEndian::<u16>::from_bits(0); N];
+            let mut i = 0;
+            while i < N {
+                let base = 2 * i;
+                let v = u16::from_be_bytes([data[base], data[base + 1]]);
+                out[i] = crate::BigEndian::<u16>::from_bits(v);
+                i += 1;
+            }
+
+            Ok(crate::FixedUtf16BeCodeUnits::from(out))
+        }
+
+        fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
+            for cu in self.as_units() {
+                out.extend(core::iter::IntoIterator::into_iter(cu.to_bits().to_be_bytes()));
+            }
+            Ok(())
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> FromSlice for crate::FixedUtf16LeCodeUnits<N> {
+        fn read_from_slice(data: &[u8]) -> Result<Self, &'static str> {
+            if data.len() < 2 * N {
+                return Err("insufficient data");
+            }
+
+            let mut out = [crate::LittleEndian::<u16>::from_bits(0); N];
+            let mut i = 0;
+            while i < N {
+                let base = 2 * i;
+                let v = u16::from_le_bytes([data[base], data[base + 1]]);
+                out[i] = crate::LittleEndian::<u16>::from_bits(v);
+                i += 1;
+            }
+
+            Ok(crate::FixedUtf16LeCodeUnits::from(out))
+        }
+
+        fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
+            for cu in self.as_units() {
+                out.extend(core::iter::IntoIterator::into_iter(cu.to_bits().to_le_bytes()));
+            }
+            Ok(())
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> FromSlice for crate::FixedUtf32BeCodeUnits<N> {
+        fn read_from_slice(data: &[u8]) -> Result<Self, &'static str> {
+            if data.len() < 4 * N {
+                return Err("insufficient data");
+            }
+
+            let mut out = [crate::BigEndian::<u32>::from_bits(0); N];
+            let mut i = 0;
+            while i < N {
+                let base = 4 * i;
+                let v = u32::from_be_bytes([data[base], data[base + 1], data[base + 2], data[base + 3]]);
+                out[i] = crate::BigEndian::<u32>::from_bits(v);
+                i += 1;
+            }
+
+            Ok(crate::FixedUtf32BeCodeUnits::from(out))
+        }
+
+        fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
+            for cu in self.as_units() {
+                out.extend(core::iter::IntoIterator::into_iter(cu.to_bits().to_be_bytes()));
+            }
+            Ok(())
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> FromSlice for crate::FixedUtf32LeCodeUnits<N> {
+        fn read_from_slice(data: &[u8]) -> Result<Self, &'static str> {
+            if data.len() < 4 * N {
+                return Err("insufficient data");
+            }
+
+            let mut out = [crate::LittleEndian::<u32>::from_bits(0); N];
+            let mut i = 0;
+            while i < N {
+                let base = 4 * i;
+                let v = u32::from_le_bytes([data[base], data[base + 1], data[base + 2], data[base + 3]]);
+                out[i] = crate::LittleEndian::<u32>::from_bits(v);
+                i += 1;
+            }
+
+            Ok(crate::FixedUtf32LeCodeUnits::from(out))
+        }
+
+        fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
+            for cu in self.as_units() {
+                out.extend(core::iter::IntoIterator::into_iter(cu.to_bits().to_le_bytes()));
+            }
+            Ok(())
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> FromSlice for crate::FixedUtf16BeNullPadded<N> {
+        fn read_from_slice(data: &[u8]) -> Result<Self, &'static str> {
+            Ok(crate::FixedUtf16BeNullPadded::from(
+                <crate::FixedUtf16BeCodeUnits<N> as FromSlice>::read_from_slice(data)?,
+            ))
+        }
+
+        fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
+            <crate::FixedUtf16BeCodeUnits<N> as FromSlice>::write_to_extend(&self.0, out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> FromSlice for crate::FixedUtf16BeSpacePadded<N> {
+        fn read_from_slice(data: &[u8]) -> Result<Self, &'static str> {
+            Ok(crate::FixedUtf16BeSpacePadded::from(
+                <crate::FixedUtf16BeCodeUnits<N> as FromSlice>::read_from_slice(data)?,
+            ))
+        }
+
+        fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
+            <crate::FixedUtf16BeCodeUnits<N> as FromSlice>::write_to_extend(&self.0, out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> FromSlice for crate::FixedUtf16LeNullPadded<N> {
+        fn read_from_slice(data: &[u8]) -> Result<Self, &'static str> {
+            Ok(crate::FixedUtf16LeNullPadded::from(
+                <crate::FixedUtf16LeCodeUnits<N> as FromSlice>::read_from_slice(data)?,
+            ))
+        }
+
+        fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
+            <crate::FixedUtf16LeCodeUnits<N> as FromSlice>::write_to_extend(&self.0, out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> FromSlice for crate::FixedUtf16LeSpacePadded<N> {
+        fn read_from_slice(data: &[u8]) -> Result<Self, &'static str> {
+            Ok(crate::FixedUtf16LeSpacePadded::from(
+                <crate::FixedUtf16LeCodeUnits<N> as FromSlice>::read_from_slice(data)?,
+            ))
+        }
+
+        fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
+            <crate::FixedUtf16LeCodeUnits<N> as FromSlice>::write_to_extend(&self.0, out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> FromSlice for crate::FixedUtf32BeNullPadded<N> {
+        fn read_from_slice(data: &[u8]) -> Result<Self, &'static str> {
+            Ok(crate::FixedUtf32BeNullPadded::from(
+                <crate::FixedUtf32BeCodeUnits<N> as FromSlice>::read_from_slice(data)?,
+            ))
+        }
+
+        fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
+            <crate::FixedUtf32BeCodeUnits<N> as FromSlice>::write_to_extend(&self.0, out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> FromSlice for crate::FixedUtf32BeSpacePadded<N> {
+        fn read_from_slice(data: &[u8]) -> Result<Self, &'static str> {
+            Ok(crate::FixedUtf32BeSpacePadded::from(
+                <crate::FixedUtf32BeCodeUnits<N> as FromSlice>::read_from_slice(data)?,
+            ))
+        }
+
+        fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
+            <crate::FixedUtf32BeCodeUnits<N> as FromSlice>::write_to_extend(&self.0, out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> FromSlice for crate::FixedUtf32LeNullPadded<N> {
+        fn read_from_slice(data: &[u8]) -> Result<Self, &'static str> {
+            Ok(crate::FixedUtf32LeNullPadded::from(
+                <crate::FixedUtf32LeCodeUnits<N> as FromSlice>::read_from_slice(data)?,
+            ))
+        }
+
+        fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
+            <crate::FixedUtf32LeCodeUnits<N> as FromSlice>::write_to_extend(&self.0, out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> FromSlice for crate::FixedUtf32LeSpacePadded<N> {
+        fn read_from_slice(data: &[u8]) -> Result<Self, &'static str> {
+            Ok(crate::FixedUtf32LeSpacePadded::from(
+                <crate::FixedUtf32LeCodeUnits<N> as FromSlice>::read_from_slice(data)?,
+            ))
+        }
+
+        fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
+            <crate::FixedUtf32LeCodeUnits<N> as FromSlice>::write_to_extend(&self.0, out)
+        }
+    }
 }
 
 // Std-backed Read/Write wrappers: enabled under `io-std` which depends on `io-core`.
@@ -379,6 +593,248 @@ pub mod std_io {
         E: EndianWrite,
     {
         v.write_to(writer)
+    }
+
+    // --- Fixed UTF helpers (feature-gated) ---
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> EndianRead for crate::FixedUtf16BeCodeUnits<N> {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut buf = vec![0u8; 2 * N];
+            reader.read_exact(&mut buf)?;
+            core_io::read_from_slice::<Self>(&buf)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> EndianRead for crate::FixedUtf16BeNullPadded<N> {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut buf = vec![0u8; 2 * N];
+            reader.read_exact(&mut buf)?;
+            core_io::read_from_slice::<Self>(&buf)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> EndianWrite for crate::FixedUtf16BeNullPadded<N> {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            let mut out = Vec::new();
+            core_io::write_to_extend(self, &mut out)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            writer.write_all(&out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> EndianRead for crate::FixedUtf16BeSpacePadded<N> {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut buf = vec![0u8; 2 * N];
+            reader.read_exact(&mut buf)?;
+            core_io::read_from_slice::<Self>(&buf)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> EndianWrite for crate::FixedUtf16BeSpacePadded<N> {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            let mut out = Vec::new();
+            core_io::write_to_extend(self, &mut out)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            writer.write_all(&out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> EndianWrite for crate::FixedUtf16BeCodeUnits<N> {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            let mut out = Vec::new();
+            core_io::write_to_extend(self, &mut out)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            writer.write_all(&out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> EndianRead for crate::FixedUtf16LeCodeUnits<N> {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut buf = vec![0u8; 2 * N];
+            reader.read_exact(&mut buf)?;
+            core_io::read_from_slice::<Self>(&buf)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> EndianRead for crate::FixedUtf16LeNullPadded<N> {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut buf = vec![0u8; 2 * N];
+            reader.read_exact(&mut buf)?;
+            core_io::read_from_slice::<Self>(&buf)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> EndianWrite for crate::FixedUtf16LeNullPadded<N> {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            let mut out = Vec::new();
+            core_io::write_to_extend(self, &mut out)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            writer.write_all(&out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> EndianRead for crate::FixedUtf16LeSpacePadded<N> {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut buf = vec![0u8; 2 * N];
+            reader.read_exact(&mut buf)?;
+            core_io::read_from_slice::<Self>(&buf)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> EndianWrite for crate::FixedUtf16LeSpacePadded<N> {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            let mut out = Vec::new();
+            core_io::write_to_extend(self, &mut out)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            writer.write_all(&out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
+    impl<const N: usize> EndianWrite for crate::FixedUtf16LeCodeUnits<N> {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            let mut out = Vec::new();
+            core_io::write_to_extend(self, &mut out)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            writer.write_all(&out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> EndianRead for crate::FixedUtf32BeCodeUnits<N> {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut buf = vec![0u8; 4 * N];
+            reader.read_exact(&mut buf)?;
+            core_io::read_from_slice::<Self>(&buf)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> EndianRead for crate::FixedUtf32BeNullPadded<N> {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut buf = vec![0u8; 4 * N];
+            reader.read_exact(&mut buf)?;
+            core_io::read_from_slice::<Self>(&buf)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> EndianWrite for crate::FixedUtf32BeNullPadded<N> {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            let mut out = Vec::new();
+            core_io::write_to_extend(self, &mut out)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            writer.write_all(&out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> EndianRead for crate::FixedUtf32BeSpacePadded<N> {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut buf = vec![0u8; 4 * N];
+            reader.read_exact(&mut buf)?;
+            core_io::read_from_slice::<Self>(&buf)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> EndianWrite for crate::FixedUtf32BeSpacePadded<N> {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            let mut out = Vec::new();
+            core_io::write_to_extend(self, &mut out)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            writer.write_all(&out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> EndianWrite for crate::FixedUtf32BeCodeUnits<N> {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            let mut out = Vec::new();
+            core_io::write_to_extend(self, &mut out)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            writer.write_all(&out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> EndianRead for crate::FixedUtf32LeCodeUnits<N> {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut buf = vec![0u8; 4 * N];
+            reader.read_exact(&mut buf)?;
+            core_io::read_from_slice::<Self>(&buf)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> EndianRead for crate::FixedUtf32LeNullPadded<N> {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut buf = vec![0u8; 4 * N];
+            reader.read_exact(&mut buf)?;
+            core_io::read_from_slice::<Self>(&buf)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> EndianWrite for crate::FixedUtf32LeNullPadded<N> {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            let mut out = Vec::new();
+            core_io::write_to_extend(self, &mut out)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            writer.write_all(&out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> EndianRead for crate::FixedUtf32LeSpacePadded<N> {
+        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+            let mut buf = vec![0u8; 4 * N];
+            reader.read_exact(&mut buf)?;
+            core_io::read_from_slice::<Self>(&buf)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> EndianWrite for crate::FixedUtf32LeSpacePadded<N> {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            let mut out = Vec::new();
+            core_io::write_to_extend(self, &mut out)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            writer.write_all(&out)
+        }
+    }
+
+    #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
+    impl<const N: usize> EndianWrite for crate::FixedUtf32LeCodeUnits<N> {
+        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+            let mut out = Vec::new();
+            core_io::write_to_extend(self, &mut out)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+            writer.write_all(&out)
+        }
     }
 }
 

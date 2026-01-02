@@ -157,6 +157,10 @@ mod formatting_ops;
 mod shorthand_types;
 pub use shorthand_types::*;
 
+// Optional proc-macro derives.
+#[cfg(feature = "derive")]
+pub use simple_endian_derive::Endianize;
+
 /// Optional IO helpers gated by the `io` feature.
 #[cfg(any(feature = "io-core", feature = "io-std"))]
 mod io;

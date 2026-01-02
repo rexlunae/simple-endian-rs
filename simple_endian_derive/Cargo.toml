@@ -1,0 +1,16 @@
+[package]
+name = "simple_endian_derive"
+version = "0.4.0"
+edition = "2024"
+license = "MIT"
+description = "Proc-macros for the simple_endian crate."
+repository = "https://github.com/rexlunae/simple-endian-rs"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full", "extra-traits"] }
+

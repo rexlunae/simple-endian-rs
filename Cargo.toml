@@ -19,10 +19,16 @@ harness = false
 memmap = "0.7"
 bencher = "0.1.5"
 
+[dependencies]
+simple_endian_derive = { path = "./simple_endian_derive", optional = true }
+
 [features]
 default = ["bitwise", "comparisons", "format", "math_ops",
     "neg_ops", "shift_ops", "both_endian", "float_impls", "integer_impls", "byte_impls",
     "simple_bool", "simple_byte_impls"]
+
+# Enable proc-macro derives (adds syn/quote via the proc-macro crate).
+derive = ["dep:simple_endian_derive"]
 bitwise = ["integer_impls"]
 comparisons = []
 format = []
