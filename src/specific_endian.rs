@@ -205,6 +205,75 @@ mod integer_impls {
     make_specific_endian_integer!(isize);
 }
 
+#[cfg(all(feature = "integer_impls", feature = "nonzero"))]
+mod nonzero_impls {
+    use super::*;
+    use core::num::{
+        NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize,
+        NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize,
+    };
+
+    /// Implement `SpecificEndian` for `core::num::NonZero*` integers by swapping the underlying integer.
+    ///
+    /// This is always infallible: byte swapping preserves non-zeroness.
+    macro_rules! make_specific_endian_nonzero {
+        ($nz:ty, $int:ty) => {
+            impl SpecificEndian<$nz> for $nz {
+                fn to_big_endian(&self) -> Self {
+                    // SAFETY: `get()` is non-zero and byte swapping preserves non-zero.
+                    unsafe { <$nz>::new_unchecked(self.get().to_be()) }
+                }
+                fn to_little_endian(&self) -> Self {
+                    unsafe { <$nz>::new_unchecked(self.get().to_le()) }
+                }
+                fn from_big_endian(&self) -> Self {
+                    unsafe { <$nz>::new_unchecked(<$int>::from_be(self.get())) }
+                }
+                fn from_little_endian(&self) -> Self {
+                    unsafe { <$nz>::new_unchecked(<$int>::from_le(self.get())) }
+                }
+            }
+        };
+    }
+
+    make_specific_endian_nonzero!(NonZeroU8, u8);
+    make_specific_endian_nonzero!(NonZeroI8, i8);
+    make_specific_endian_nonzero!(NonZeroU16, u16);
+    make_specific_endian_nonzero!(NonZeroI16, i16);
+    make_specific_endian_nonzero!(NonZeroU32, u32);
+    make_specific_endian_nonzero!(NonZeroI32, i32);
+    make_specific_endian_nonzero!(NonZeroU64, u64);
+    make_specific_endian_nonzero!(NonZeroI64, i64);
+    make_specific_endian_nonzero!(NonZeroU128, u128);
+    make_specific_endian_nonzero!(NonZeroI128, i128);
+    make_specific_endian_nonzero!(NonZeroUsize, usize);
+    make_specific_endian_nonzero!(NonZeroIsize, isize);
+}
+
+#[cfg(all(feature = "integer_impls", feature = "wrapping"))]
+mod wrapping_impls {
+    use super::*;
+    use core::num::Wrapping;
+
+    impl<T> SpecificEndian<Wrapping<T>> for Wrapping<T>
+    where
+        T: SpecificEndian<T>,
+    {
+        fn to_big_endian(&self) -> Self {
+            Wrapping(self.0.to_big_endian())
+        }
+        fn to_little_endian(&self) -> Self {
+            Wrapping(self.0.to_little_endian())
+        }
+        fn from_big_endian(&self) -> Self {
+            Wrapping(self.0.from_big_endian())
+        }
+        fn from_little_endian(&self) -> Self {
+            Wrapping(self.0.from_little_endian())
+        }
+    }
+}
+
 #[cfg(feature = "float_impls")]
 mod float_impls {
     use super::*;

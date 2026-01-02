@@ -157,6 +157,13 @@ mod formatting_ops;
 mod shorthand_types;
 pub use shorthand_types::*;
 
+// Additional shorthand types (feature-gated).
+#[cfg(all(feature = "integer_impls", feature = "nonzero"))]
+mod shorthand_types_nonzero;
+
+#[cfg(all(feature = "integer_impls", feature = "nonzero"))]
+pub use shorthand_types_nonzero::*;
+
 // Optional proc-macro derives.
 #[cfg(feature = "derive")]
 pub use simple_endian_derive::Endianize;
