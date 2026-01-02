@@ -162,9 +162,9 @@ Yes, there are several that cover at least a part of this functionality. Most fo
 
 ## So, why create another one?
 
-Because for a lot of binary-format work, you don’t just want helper functions—you want a **language for describing the format**.
+Because the existing crates for handling endianness in Rust require a lot of manual byte mashing, especially if you're trying to write safe code.
 
-This crate aims to make binary formats feel like honest Rust types:
+This crate aims to make binary formats feel like ordinary Rust types:
 
 * endianness lives in your struct/enum definitions
 * the compiler prevents “oops, I wrote native-endian to the wire” mistakes
@@ -194,13 +194,7 @@ Note: if you’re formatting these values in hot paths, consider converting to n
 
 This crate has a lot of functionality. The easiest thing to do is enable all features....and then watch your binary size bloat. Fortunately, it's also designed to scale up and down quite a lot, so that it's suitable both for codebases that need all the features, as well as small lightweight embedded projects.
 
-For that reason, consider it a strong recommendation to use the granular feature flags for what you actually need.
-
-## Optional feature flags
-
-Most users can just use the default features and not think about it.
-
-If you care about binary size, compile times, or a smaller API surface (especially for `no_std`/embedded), this crate is designed to be “pick what you need”.
+For that reason, consider it a strong recommendation to use the granular feature flags for what you actually need. If you care about binary size, compile times, or a smaller API surface (especially for `no_std`/embedded), this crate is designed to be “pick what you need”.
 
 Some commonly useful opt-ins:
 
@@ -218,13 +212,13 @@ Other feature families you may care about:
 The goals of this crate are as follows:
 
 1. Safely provide specific-endian types with low or no runtime overhead. There should be no runtime penalty when the host architecture matches the specified endianness, and very low penalty loads and stores otherwise.
-2. Straightforward, architecture-independent declarative syntax which ensures that load and store operations as correct.
+2. Straightforward, architecture-independent declarative syntax which ensures that load and store operations are correct.
 3. Ergonomic use patterns that maximize clarity and convenience without sacrificing correctness or safety.
 4. Because of the provided classes of operations, many logical, bitwise, and mathematical operations can be performed on the specific-endian types within the crate without explicitly converting to native host endian.
 5. Incorrect handling of data should generate clear type errors at compile time.
 6. Determination of correct endianness should be at declaration, and should not need to be repeated unless converting to a different endianness.
 7. Support for all or Rust's built-in types where endianness is relevant.
-8. The only dependency needed is the core crate. The std crate is used, however, for tests and benchmarks, and for some oprional features.
+8. The only dependency needed is the core crate. The std crate is used, however, for tests and benchmarks, and for some optional features.
 
 ## Quick start
 
