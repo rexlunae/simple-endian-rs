@@ -2,3 +2,4 @@
 **/*.rs.bk
 Cargo.lock
 .test.bin
+simple_endian_derive/target/
