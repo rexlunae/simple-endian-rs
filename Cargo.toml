@@ -11,6 +11,9 @@ documentation = "https://docs.rs/simple_endian/"
 homepage = "https://github.com/rexlunae/simple-endian-rs"
 readme = "README.md"
 
+[workspace]
+members = ["simple_endian_derive"]
+
 [[bench]]
 name = "benches"
 harness = false
@@ -20,7 +23,8 @@ memmap = "0.7"
 bencher = "0.1.5"
 
 [dependencies]
-simple_endian_derive = { path = "./simple_endian_derive", optional = true }
+simple_endian_derive = { version = "0.4.0", path = "./simple_endian_derive", optional = true }
+
 
 [features]
 default = ["bitwise", "comparisons", "format", "math_ops",
