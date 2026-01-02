@@ -107,7 +107,7 @@ pub mod core_io {
     {
         Ok(from_bytes::<T>(data)?.to_native())
     }
-    
+
 
     /// Trait describing types that can be read from / written to a byte slice
     /// representation. Implemented for `BigEndian<T>` and `LittleEndian<T>`.
