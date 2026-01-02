@@ -534,44 +534,121 @@ pub mod std_io {
     use crate::{BigEndian, LittleEndian};
     use std::io::{self, Read, Write};
     use core::mem::size_of;
+    use core::any::TypeId;
 
     fn read_be<R, T>(reader: &mut R) -> io::Result<BigEndian<T>>
     where
         R: Read,
-        T: crate::SpecificEndian<T> + Default + Copy + core_io::EndianRepr,
+        T: crate::SpecificEndian<T> + Default + Copy + core_io::EndianRepr + 'static,
     {
+        // Fast paths for common primitives to avoid heap allocation.
+        if TypeId::of::<T>() == TypeId::of::<u16>() {
+            let mut buf = [0u8; 2];
+            reader.read_exact(&mut buf)?;
+            let v = u16::from_be_bytes(buf);
+            // SAFETY: We just proved T == u16.
+            let v: T = unsafe { core::mem::transmute_copy(&v) };
+            return Ok(BigEndian::from(v));
+        }
+        if TypeId::of::<T>() == TypeId::of::<u32>() {
+            let mut buf = [0u8; 4];
+            reader.read_exact(&mut buf)?;
+            let v = u32::from_be_bytes(buf);
+            let v: T = unsafe { core::mem::transmute_copy(&v) };
+            return Ok(BigEndian::from(v));
+        }
+        if TypeId::of::<T>() == TypeId::of::<u64>() {
+            let mut buf = [0u8; 8];
+            reader.read_exact(&mut buf)?;
+            let v = u64::from_be_bytes(buf);
+            let v: T = unsafe { core::mem::transmute_copy(&v) };
+            return Ok(BigEndian::from(v));
+        }
+
         let mut buf = vec![0u8; size_of::<T>()];
         reader.read_exact(&mut buf)?;
-    core_io::read_from_slice::<BigEndian<T>>(&buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        core_io::read_from_slice::<BigEndian<T>>(&buf)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
     }
 
     fn read_le<R, T>(reader: &mut R) -> io::Result<LittleEndian<T>>
     where
         R: Read,
-        T: crate::SpecificEndian<T> + Default + Copy + core_io::EndianRepr,
+        T: crate::SpecificEndian<T> + Default + Copy + core_io::EndianRepr + 'static,
     {
+        if TypeId::of::<T>() == TypeId::of::<u16>() {
+            let mut buf = [0u8; 2];
+            reader.read_exact(&mut buf)?;
+            let v = u16::from_le_bytes(buf);
+            let v: T = unsafe { core::mem::transmute_copy(&v) };
+            return Ok(LittleEndian::from(v));
+        }
+        if TypeId::of::<T>() == TypeId::of::<u32>() {
+            let mut buf = [0u8; 4];
+            reader.read_exact(&mut buf)?;
+            let v = u32::from_le_bytes(buf);
+            let v: T = unsafe { core::mem::transmute_copy(&v) };
+            return Ok(LittleEndian::from(v));
+        }
+        if TypeId::of::<T>() == TypeId::of::<u64>() {
+            let mut buf = [0u8; 8];
+            reader.read_exact(&mut buf)?;
+            let v = u64::from_le_bytes(buf);
+            let v: T = unsafe { core::mem::transmute_copy(&v) };
+            return Ok(LittleEndian::from(v));
+        }
+
         let mut buf = vec![0u8; size_of::<T>()];
         reader.read_exact(&mut buf)?;
-    core_io::read_from_slice::<LittleEndian<T>>(&buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+        core_io::read_from_slice::<LittleEndian<T>>(&buf)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
     }
 
     fn write_be<W, T>(writer: &mut W, v: &BigEndian<T>) -> io::Result<()>
     where
         W: Write,
-        T: crate::SpecificEndian<T> + Copy + core_io::EndianRepr,
+        T: crate::SpecificEndian<T> + Copy + core_io::EndianRepr + 'static,
     {
+        if TypeId::of::<T>() == TypeId::of::<u16>() {
+            let n: u16 = unsafe { core::mem::transmute_copy(&v.to_native()) };
+            return writer.write_all(&n.to_be_bytes());
+        }
+        if TypeId::of::<T>() == TypeId::of::<u32>() {
+            let n: u32 = unsafe { core::mem::transmute_copy(&v.to_native()) };
+            return writer.write_all(&n.to_be_bytes());
+        }
+        if TypeId::of::<T>() == TypeId::of::<u64>() {
+            let n: u64 = unsafe { core::mem::transmute_copy(&v.to_native()) };
+            return writer.write_all(&n.to_be_bytes());
+        }
+
         let mut out = Vec::new();
-        core_io::write_to_extend(v, &mut out).map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+        core_io::write_to_extend(v, &mut out)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
         writer.write_all(&out)
     }
 
     fn write_le<W, T>(writer: &mut W, v: &LittleEndian<T>) -> io::Result<()>
     where
         W: Write,
-        T: crate::SpecificEndian<T> + Copy + core_io::EndianRepr,
+        T: crate::SpecificEndian<T> + Copy + core_io::EndianRepr + 'static,
     {
+        if TypeId::of::<T>() == TypeId::of::<u16>() {
+            let n: u16 = unsafe { core::mem::transmute_copy(&v.to_native()) };
+            return writer.write_all(&n.to_le_bytes());
+        }
+        if TypeId::of::<T>() == TypeId::of::<u32>() {
+            let n: u32 = unsafe { core::mem::transmute_copy(&v.to_native()) };
+            return writer.write_all(&n.to_le_bytes());
+        }
+        if TypeId::of::<T>() == TypeId::of::<u64>() {
+            let n: u64 = unsafe { core::mem::transmute_copy(&v.to_native()) };
+            return writer.write_all(&n.to_le_bytes());
+        }
+
         let mut out = Vec::new();
-        core_io::write_to_extend(v, &mut out).map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
+        core_io::write_to_extend(v, &mut out)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
         writer.write_all(&out)
     }
 
@@ -585,39 +662,43 @@ pub mod std_io {
 
     impl<T> EndianRead for BigEndian<T>
     where
-        T: crate::SpecificEndian<T> + Default + Copy + core_io::EndianRepr,
+        T: crate::SpecificEndian<T> + Default + Copy + core_io::EndianRepr + 'static,
     {
         fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
             read_be::<R, T>(reader)
         }
     }
 
+
     impl<T> EndianRead for LittleEndian<T>
     where
-        T: crate::SpecificEndian<T> + Default + Copy + core_io::EndianRepr,
+        T: crate::SpecificEndian<T> + Default + Copy + core_io::EndianRepr + 'static,
     {
         fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
             read_le::<R, T>(reader)
         }
     }
 
+
     impl<T> EndianWrite for BigEndian<T>
     where
-        T: crate::SpecificEndian<T> + Copy + core_io::EndianRepr,
+        T: crate::SpecificEndian<T> + Copy + core_io::EndianRepr + 'static,
     {
         fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
             write_be::<W, T>(writer, self)
         }
     }
 
+
     impl<T> EndianWrite for LittleEndian<T>
     where
-        T: crate::SpecificEndian<T> + Copy + core_io::EndianRepr,
+        T: crate::SpecificEndian<T> + Copy + core_io::EndianRepr + 'static,
     {
         fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
             write_le::<W, T>(writer, self)
         }
     }
+
 
     impl<const N: usize> EndianRead for [u8; N] {
         fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
