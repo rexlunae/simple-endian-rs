@@ -114,6 +114,11 @@ fn main() -> Result<(), Error> {
 mod specific_endian;
 pub use specific_endian::*;
 
+/// Types that do not change based on endianness and their implementations.
+/// These types include the unit type, booleans, single-byte integers, and strings.
+mod simple_endian;
+pub use simple_endian::SimpleEndian;
+
 /// Bitwise operations.  These should be equally fast in any endian.
 #[cfg(feature = "bitwise")]
 mod bitwise_ops;

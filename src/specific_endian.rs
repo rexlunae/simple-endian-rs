@@ -25,7 +25,10 @@ where
     }
 }
 
-#[cfg(feature = "byte_impls")]
+// When `simple_specific_endian_bridge` is enabled we provide no-op SpecificEndian impls for
+// the SimpleEndian + Copy primitives (bool/u8/i8). Those would overlap with the `byte_impls`
+// impls below, so we disable this module in that configuration.
+#[cfg(all(feature = "byte_impls", not(feature = "simple_specific_endian_bridge")))]
 mod byte_impls {
     use super::*;
     /// A macro implementing `SpecificEndian<T>` for simple data types where big and little endian forms are the same.
@@ -52,6 +55,84 @@ mod byte_impls {
     make_specific_endian_single_byte!(i8);
     // If bool ends up being represented by something other than a byte, this might not work right.
     make_specific_endian_single_byte!(bool);
+}
+
+/// Bridge `SimpleEndian` -> `SpecificEndian` for primitive, endianness-invariant types.
+///
+/// We intentionally implement this only for the `SimpleEndian + Copy` primitives we expose
+/// today (bool/u8/i8), because a true blanket impl like
+/// `impl<T: SimpleEndian + Copy> SpecificEndian<T> for T` would overlap with other `SpecificEndian`
+/// impls (e.g. integers/floats) and is rejected by Rust.
+#[cfg(feature = "simple_specific_endian_bridge")]
+mod simple_specific_endian_bridge {
+    use super::*;
+    use crate::SimpleEndian;
+
+    // bool uses the same gating as the SimpleEndian impl.
+    #[cfg(feature = "simple_bool")]
+    impl SpecificEndian<bool> for bool {
+        fn to_big_endian(&self) -> bool {
+            (*self).to_big_endian()
+        }
+        fn to_little_endian(&self) -> bool {
+            (*self).to_little_endian()
+        }
+        fn from_big_endian(&self) -> bool {
+            (*self).from_big_endian()
+        }
+        fn from_little_endian(&self) -> bool {
+            (*self).from_little_endian()
+        }
+    }
+
+    // u8/i8 use the same gating as the SimpleEndian impl.
+    #[cfg(feature = "simple_byte_impls")]
+    impl SpecificEndian<u8> for u8 {
+        fn to_big_endian(&self) -> u8 {
+            (*self).to_big_endian()
+        }
+        fn to_little_endian(&self) -> u8 {
+            (*self).to_little_endian()
+        }
+        fn from_big_endian(&self) -> u8 {
+            (*self).from_big_endian()
+        }
+        fn from_little_endian(&self) -> u8 {
+            (*self).from_little_endian()
+        }
+    }
+
+    #[cfg(feature = "simple_byte_impls")]
+    impl SpecificEndian<i8> for i8 {
+        fn to_big_endian(&self) -> i8 {
+            (*self).to_big_endian()
+        }
+        fn to_little_endian(&self) -> i8 {
+            (*self).to_little_endian()
+        }
+        fn from_big_endian(&self) -> i8 {
+            (*self).from_big_endian()
+        }
+        fn from_little_endian(&self) -> i8 {
+            (*self).from_little_endian()
+        }
+    }
+
+    #[cfg(feature = "simple_char_impls")]
+    impl SpecificEndian<char> for char {
+        fn to_big_endian(&self) -> char {
+            (*self).to_big_endian()
+        }
+        fn to_little_endian(&self) -> char {
+            (*self).to_little_endian()
+        }
+        fn from_big_endian(&self) -> char {
+            (*self).from_big_endian()
+        }
+        fn from_little_endian(&self) -> char {
+            (*self).from_little_endian()
+        }
+    }
 }
 
 #[cfg(feature = "integer_impls")]
@@ -292,6 +373,61 @@ mod both_endian_primatives {
 mod tests {
     use crate::*;
     use core::mem::size_of;
+
+    // These tests are specifically for the `SimpleEndian` -> `SpecificEndian` bridge.
+    // They ensure we get the `SpecificEndian` methods on the expected primitives and that
+    // the conversions are no-ops.
+    #[cfg(all(feature = "simple_specific_endian_bridge", feature = "simple_bool"))]
+    #[test]
+    fn bridge_bool_is_noop() {
+        fn assert_specific_endian<T: SpecificEndian<T>>() {}
+        assert_specific_endian::<bool>();
+
+        let v = true;
+        assert_eq!(SpecificEndian::to_big_endian(&v), v);
+        assert_eq!(SpecificEndian::to_little_endian(&v), v);
+        assert_eq!(SpecificEndian::from_big_endian(&v), v);
+        assert_eq!(SpecificEndian::from_little_endian(&v), v);
+    }
+
+    #[cfg(all(feature = "simple_specific_endian_bridge", feature = "simple_byte_impls"))]
+    #[test]
+    fn bridge_u8_is_noop() {
+        fn assert_specific_endian<T: SpecificEndian<T>>() {}
+        assert_specific_endian::<u8>();
+
+        let v: u8 = 0xfe;
+        assert_eq!(SpecificEndian::to_big_endian(&v), v);
+        assert_eq!(SpecificEndian::to_little_endian(&v), v);
+        assert_eq!(SpecificEndian::from_big_endian(&v), v);
+        assert_eq!(SpecificEndian::from_little_endian(&v), v);
+    }
+
+    #[cfg(all(feature = "simple_specific_endian_bridge", feature = "simple_byte_impls"))]
+    #[test]
+    fn bridge_i8_is_noop() {
+        fn assert_specific_endian<T: SpecificEndian<T>>() {}
+        assert_specific_endian::<i8>();
+
+        let v: i8 = -42;
+        assert_eq!(SpecificEndian::to_big_endian(&v), v);
+        assert_eq!(SpecificEndian::to_little_endian(&v), v);
+        assert_eq!(SpecificEndian::from_big_endian(&v), v);
+        assert_eq!(SpecificEndian::from_little_endian(&v), v);
+    }
+
+    #[cfg(all(feature = "simple_specific_endian_bridge", feature = "simple_char_impls"))]
+    #[test]
+    fn bridge_char_is_noop() {
+        fn assert_specific_endian<T: SpecificEndian<T>>() {}
+        assert_specific_endian::<char>();
+
+        let v: char = '🦀';
+        assert_eq!(SpecificEndian::to_big_endian(&v), v);
+        assert_eq!(SpecificEndian::to_little_endian(&v), v);
+        assert_eq!(SpecificEndian::from_big_endian(&v), v);
+        assert_eq!(SpecificEndian::from_little_endian(&v), v);
+    }
 
     #[test]
     fn declare_all() {
