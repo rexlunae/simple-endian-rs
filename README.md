@@ -1,26 +1,141 @@
 # simple-endian
 
-As of the 0.3 release, this library works on stable Rust.
+`simple_endian` is a toolkit for **describing binary formats in Rust**: network protocols, file formats, and on-disk/on-wire data structures that must be stored **consistently regardless of host CPU endianness**.
 
-Yet another library for handling endian in Rust.  We use Rust's type system to ensure correct conversions and build data types with explicit endianness defined for more seamless portability of data structures between processor types.  It should be fairly lightweight, and supports `#![no_std]`.
+It’s not only about swapping bytes.
+The goal is to let you *design* and *implement* binary layouts ergonomically, with the compiler helping enforce that:
 
-The key difference between this crate and other crates for handling endian is that in this crate, you aren't doing conversions manually at all.  You are just working in the endian that is appropriate to the data structures that you're dealing with, and we try to provide the needed traits and methods to do this in as normal a way as possible.
+* numeric fields are always read/written with the correct byte order
+* your in-memory logic can stay close to “ordinary” Rust
+* conversions happen explicitly at boundaries (wire  native) so mistakes become type errors
 
-## Isn't there already a library for this
+At the core, you declare endianness in the **data definition** (`BigEndian<T>`, `LittleEndian<T>`, and shorthand aliases like `u32be`, `u16le`) and then:
 
-Yes, there are several.  But I'm not entirely happy with any of them.  Specifically, most of the libraries out there right now focus on providing functions for doing endian conversions.  Here are a few of them:
+* operate on endian-aware values using normal operators and traits
+* convert at boundaries via `.to_native()` / `.into()`
+
+Optional features expand this into a full wire-format toolkit:
+
+* `derive`: generate `*Wire` helper types from logical structs/enums (stable layout, endian-correct fields)
+* `io-std` / `io-core`: `read_specific` / `write_specific` for endian-aware IO
+* `text_*`: fixed-size UTF-16/UTF-32 helpers for formats that standardize on those encodings (e.g. UTF-16LE)
+
+The crate is designed to be lightweight and supports `#![no_std]` (derive/IO/text are feature-gated).
+
+## New Text Handling
+
+New in the `0.4` release is a set of feature-gated types and conversions for handling on-disk/on-wire Unicode encodings **other than UTF-8**.
+
+This matters because a lot of real-world binary formats *standardize* their text fields as:
+
+* **UTF-16LE/BE code units** (common in file formats and OS metadata)
+* **UTF-32LE/BE code units** (sometimes used for fixed-width fields)
+* fixed-size strings with explicit padding rules
+
+Trying to model those with Rust `String`/`&str` directly usually leads to ad-hoc byte slicing and accidental host-endian assumptions. The text helpers here are meant to keep your code:
+
+* explicit about encoding
+* explicit about endianness of the *code units*
+* safe (bounded, validated conversions)
+* consistent with the rest of the crate’s “wire types are types” approach
+
+### Features
+
+Text support is opt-in:
+
+* `text_utf16`  UTF-16 code unit types and conversions
+* `text_utf32`  UTF-32 code unit types and conversions
+* `text_fixed`  fixed-size (const-generic) text field wrappers
+* `text_all`  convenience alias enabling the above
+
+These are designed to work with:
+
+* `derive` ( `#[text(...)]` on struct fields)
+* `io-std`/`io-core` ( `read_specific` / `write_specific` for fixed UTF fields)
+
+### Fixed-size UTF-16/UTF-32 fields (padding semantics)
+
+The fixed types represent **exactly $N$ code units** on the wire. They are not growable strings.
+They come in a few common padding styles, for example:
+
+* `FixedUtf16LeSpacePadded<N>`  UTF-16LE, right-padded with the space code unit (`0x0020`); decoding trims trailing spaces
+* `FixedUtf16LeNullPadded<N>`  UTF-16LE, right-padded with NUL (`0x0000`); decoding trims trailing NULs
+
+Similar wrappers exist for BE and for UTF-32.
+
+The important endianness point: **the endianness applies to the UTF code units**, not to the host.
+So `FixedUtf16Le...` is *always* little-endian on the wire, even on a big-endian CPU.
+
+### Example: a fixed UTF-16LE field in a wire struct
+
+This mirrors formats like FAT long file names (UTF-16LE) or other metadata blocks that store fixed-width UTF-16.
+
+```rust
+use simple_endian::{Endianize, FixedUtf16LeSpacePadded};
+use simple_endian::{read_specific, write_specific};
+
+#[derive(Endianize, Debug)]
+#[endian(le)]
+#[repr(C)]
+struct Entry {
+  id: u16,
+
+  // 8 UTF-16LE code units, padded with spaces on the wire.
+  #[text(utf16, units = 8, pad = "space")]
+  name: String,
+}
+
+fn round_trip() {
+  let wire = EntryWire {
+    id: 7u16.into(),
+    name: "ALICE".try_into().unwrap(),
+  };
+
+  let mut buf = Vec::new();
+  write_specific(&mut buf, &wire).unwrap();
+
+  let mut cur = std::io::Cursor::new(buf);
+  let decoded: EntryWire = read_specific(&mut cur).unwrap();
+  let name = String::try_from(&decoded.name).unwrap();
+  assert_eq!(name, "ALICE");
+}
+```
+
+Notes:
+
+* For formats that are *actually ASCII* (e.g. FAT16 short names, many protocol tokens), keep them as `[u8; N]` bytes and validate/trim explicitly.
+* Use UTF-16/UTF-32 helpers when the spec calls for them; that’s where they shine.
+* The fixed types are great for avoiding variable-length parsing and for guaranteeing layout.
+
+## Isn’t there already a library for this?
+
+Yes, there are several that cover at least a part of this functionality. Most focus on *functions* for byte swapping / reading numbers from byte slices. A few well-known ones:
 
 * The [endian](https://crates.io/crates/endian) crate.
 * The [byteorder](https://crates.io/crates/byteorder) crate.
 * The [bswap](https://crates.io/crates/bswap) crate.
 
-byteorder has over 11 million downloads, and is clearly the prevailing way to handle endian in Rust.  However, it relies on programmers writing specific logic to swap bytes and requires accessing memory in ways that are unlike normal patterns for Rust.  But really, the only difference between a big- and little-endian value is the interpretation.  It shouldn't require a drastically different pattern of code to access them.
+`byteorder` is the prevailing approach (and a great crate), but it tends to push endianness decisions into *parsing logic*. For some codebases, it’s nicer if the endianness is part of the type and your code can stay closer to “ordinary” Rust.
 
-## So, why create another one
+## So, why create another one?
 
-Because I think a better approach is to define your endianness as part of your data definition rather than in the logic of your program, and then to make byte order swaps as transparent as possible while still ensuring correctness.  And because the more like normal Rust data types and operations this is, the more likely it is that people will write portable code and data structures in the first place.
+Because for a lot of binary-format work, you don’t just want helper functionsyou want a **language for describing the format**.
 
-The philosophy of this crate is that you define your endian when you write your data structures, and then you use clear, imperative logic to mutate it without needing to think about the details or the host endian.  This makes it fundamentally different from crates that just give you a way to read a `&[u8; 8]` into a `u64`.
+This crate aims to make binary formats feel like honest Rust types:
+
+* endianness lives in your struct/enum definitions
+* the compiler prevents “oops, I wrote native-endian to the wire” mistakes
+* optional derive + IO helpers make it practical to build complete protocols and storage formats
+
+That makes it a good fit for packet formats, RPC framing, binary logs, file formats, and any place where a stable representation matters.
+
+## Performance notes
+
+`simple_endian` is designed to be low-overhead: endian-aware wrappers are `#[repr(transparent)]` and the read/write helpers are optimized to avoid per-value allocations.
+
+There’s a short benchmark-driven writeup (including BE vs LE comparisons and “pure” conversion vs `std::io` overhead) in [`PERFORMANCE.md`](./PERFORMANCE.md).
+
+Note: if you’re formatting these values in hot paths, consider converting to native first (e.g. via `.to_native()`), since formatting overhead can dominate.
 
 ## Goals of this project
 
@@ -28,13 +143,16 @@ The goals of this crate are as follows:
 
 1. Safely provide specific-endian types with low or no runtime overhead. There should be no runtime penalty when the host architecture matches the specified endianness, and very low penalty loads and stores otherwise.
 2. Straightforward, architecture-independent declarative syntax which ensures that load and store operations as correct.
-3. Ergonomic use patterns that maximize clarity and convenience without sacrificing correctness safety or correctness.
-4. Incorrect handling of data should generate clear type errors at compile time.
-5. Determination of correct endianness should be at declaration, and should not need to be repeated unless converting to a different endianness.
-6. Support for all or Rust's built-in types where endianness is relevant.
-7. The only dependency needed is the core crate. The std crate is used, however, for tests and benchmarks.
+3. Ergonomic use patterns that maximize clarity and convenience without sacrificing correctness or safety.
+4. Because of the provided classes of operations, many logical, bitwise, and mathematical operations can be performed on the specific-endian types within the crate without explicitly converting to native host endian.
+5. Incorrect handling of data should generate clear type errors at compile time.
+6. Determination of correct endianness should be at declaration, and should not need to be repeated unless converting to a different endianness.
+7. Support for all or Rust's built-in types where endianness is relevant.
+8. The only dependency needed is the core crate. The std crate is used, however, for tests and benchmarks, and for some oprional features.
 
-## Examples
+## Quick start
+
+### Define endian-aware values
 
 ```rust
 use simple_endian::*;
@@ -75,9 +193,33 @@ let mut foo: u64be = 4.into();
 foo = 7;     // Will not compile without .into().
 ```
 
+### Optional pattern: compute in native, store as endian
+
+While it is possible and often just as fast to do many operations directly and safely on the endianness of the structure, for arithmetic-heavy code, it’s may be clearer (and sometimes faster) to do math in native types and store back.
+
+Either way, the type system ensures that accesses are safe and correct, so this code would be considered optimization:
+
+```rust
+use simple_endian::{u16be, BigEndian};
+
+fn add_one(x: u16be) -> u16be {
+  let native: u16 = x.to_native();
+  (native.wrapping_add(1)).into()
+}
+
+// Same idea with the generic wrapper:
+fn add_one_generic(x: BigEndian<u16>) -> BigEndian<u16> {
+  (x.to_native().wrapping_add(1)).into()
+}
+```
+
 ## How it works
 
-At its core, this crate centers around one trait, called `SpecificEndian<T>`, and the generic structs `BigEndian<T>` and `LittleEndian<T>`.  `SpecificEndian<T>` is required to make `BigEndian<T>` and `LittleEndian<T>` structs.  Any data type that implements `SpecificEndian`, even if it handles endianness in unusual ways, can be assigned `BigEndian` and `LittleEndian` variants using the structs in this crate, the main possibly limitation being that they need to use the same underlying structure.  In fact, `u64be` is just a type alias for `BigEndian<u64>`.  There is no memory footprint added by the `BigEndian<T>` and `LittleEndian<T>` structs, in fact, in most cases it uses the type T to store the data.  The only purpose of the structs is to tag them for Rust's type system to enforce correct accesses.  This means that it can be used directly within larger structs, and then the entire struct can be written to disk, send over a network socket, and otherwise shared between processor architectures using the same code regardless of host endian using declarative logic without any conditionals.
+At its core, this crate centers around one trait, `SpecificEndian<T>`, plus the generic wrappers `BigEndian<T>` and `LittleEndian<T>`.
+
+`SpecificEndian<T>` marks a type as safe to store in an endian-tagged wrapper. For primitives, that’s a given; for custom types, you can implement it yourself.
+
+There is no extra memory footprint added by `BigEndian<T>`/`LittleEndian<T>` (they’re `#[repr(transparent)]`); they exist to make endianness explicit and enforce correct reads/writes via the type system.
 
 This crate provides `SpecificEndian` implementations for most of the built-in types in Rust, including:
 
@@ -85,13 +227,20 @@ This crate provides `SpecificEndian` implementations for most of the built-in ty
 * The multi-byte integers: `u16`, `u32`, `u64`, `u128`, `usize`, `i16`, `i32`, `i64`, `i128`, `isize`
 * The floats: `f32`, `f64`.
 
-At the time of this writing, the only common built-in type that doesn't have an implementation is char, and this is because some values of char that would be possible from the binary representation would cause a panic.  Usually, you wouldn't want to store a char directly anyway, so this is probably a small limitation.
+Additionally, `char` is supported (behind the `simple_char_impls` feature, enabled by default via the `simple_all`/default feature set).
 
-## Derive macros (optional)
+Note: even though `char` is supported as an in-memory value, many on-disk / on-wire formats don’t store Rust `char` values directly. When you need a stable binary representation, prefer explicit encodings (e.g. UTF-8 bytes, UTF-16 code units, UTF-32 code points) using the text helpers.
 
-If you enable the `derive` feature, you can generate *wire-format* helper types from a “logical” struct definition.
+## Derive macro (optional): `derive` Feature
 
-The macro is intentionally conservative: it generates a companion `*Wire` struct where fields are endian-wrapped, and it can also generate inline fixed UTF-16/UTF-32 padded fields from `String`/`&str` fields.
+If you enable the `derive` feature, you can generate **wire-format helper types** from a “logical” struct definition. This comes in the form of the `Endianize` macro.
+
+The macro is intentionally conservative:
+
+* It generates a companion `*Wire` struct where fields are endian-wrapped.
+* It can generate inline fixed UTF-16/UTF-32 padded fields from `String`/`&str` fields.
+
+It’s designed for “I want a stable on-wire layout, and I want the compiler to help keep it correct.”
 
 ```rust
 use simple_endian::Endianize;
@@ -125,9 +274,14 @@ let _wire = HeaderWire {
 Notes:
 
 * This currently supports **structs**, **enums**, and **unions**.
-* The derive does **not** (yet) auto-generate conversions between `Header` and `HeaderWire`.
-* Because `BigEndian<T>` requires `T: SpecificEndian<T>`, the derive does not generate `BigEndian<HeaderWire>` wrappers.
-  Instead, `HeaderWire` is meant to be the `#[repr(C)]` “on-wire” type that you can transmute/write as bytes.
+* The derive auto-generates common conversions between logical types and their `*Wire` counterparts:
+  * `From<Header> for HeaderWire` (for structs without `#[text(..)]` fields)
+  * `From<HeaderWire> for Header` (when the struct has no `#[text(..)]` fields)
+  * `TryFrom<HeaderWire> for Header` (when the struct contains `#[text(..)]` fields; error type is `FixedTextError`)
+* Arrays:
+  * Raw byte arrays like `[u8; 8]` are treated as already wire-safe and are passed through unchanged (endianness does not apply to bytes).
+  * For other fixed-size arrays, endianness is applied **per element**. For example, under `#[endian(le)]`, a field `words: [u16; 3]` becomes `words: [LittleEndian<u16>; 3]` in the generated `*Wire` type.
+* `HeaderWire` is `#[repr(C)]` “on-wire” type that you can read/write as bytes (often via the IO helpers below).
 
 ### Enum support (tag + payload)
 
@@ -149,6 +303,24 @@ Unions are generated in a **safe default** mode:
 * `#[text(...)]` is not supported on union fields.
 
 If you need IO for a union-like format, model it as an enum instead (tag + payload), which `Endianize` supports.
+
+## Examples
+
+There are runnable examples in `examples/` (each example is in its own subdirectory as `examples/<name>/main.rs`):
+
+* `endian_values`: store values in `BigEndian<T>`/`LittleEndian<T>`, convert to native, and use arithmetic/bitwise operations.
+* `explicit_struct_endian`: define a `#[repr(C)]` struct with explicit endian fields (e.g. `u32be`, `u16le`) and inspect raw bytes.
+* `derive_protocol`: a small binary-protocol demo using `#[derive(Endianize)]`, fixed padded text fields, enums (tag + payload), and `io-std` read/write.
+  * Requires features: `derive`, `io-std`, `text_all`.
+* `enum_protocol`: a framed binary protocol example focusing specifically on `#[derive(Endianize)]` enums (tag + payload).
+  * Demonstrates a **multi-byte (u16) discriminator** stored on the wire in a specified endian, and shows why interpreting it with the wrong endian produces the wrong value.
+  * Requires features: `derive`, `io-std`, `text_all`.
+* `cpu_emulator`: a tiny toy CPU emulator that stores its registers as `BigEndian<u16>` and reads/writes 16-bit words in big-endian byte order.
+  * Run with: `cargo run --example cpu_emulator --features "io-std"`
+* `fat16_driver`: a tiny FAT16 “driver” that parses a synthetic disk image and prints boot sector + root directory info.
+  * Requires features: `derive`, `io-std`, `text_all`.
+* `messaging_client` / `messaging_server` (under `examples/messaging_app/`): a more end-to-end demo of designing a small wire protocol and using derive + IO helpers across a client/server boundary.
+  * Requires features: `derive`, `io-std`, `text_all`.
 
 This crate also provides implementations of a variety of useful traits for the types that it wraps, including boolean logic implementations for the integer types, including bools.  This allows most boolean logic operations to be performed without any endian conversions using ordinary operators.  You are required to use same-endian operands, however, like this:
 
@@ -195,11 +367,18 @@ You might notice that we used `#[repr(C)]` in the data struct above, and you mig
 
 In addition to offering support for ensuring that correct endianness is used by leveraging the Rust type system, this crate also provides implementations of a number of traits from the `core` library that allow you to work with values directly without converting them to native endian types first. In many cases, this is literally a zero-cost capability, because bitwise operations are endian-agnostic, and as long as you are using other `SpecificEndian` types, there is no overhead to doing operations on them directly. In cases where a conversion to native endian is necessary, the crate will perform the conversion, and return a value in the same type as the input.
 
-## Features
+## Feature flags
 
 Although this crate includes a lot of useful functionality up front, including it all can increase your compiled size significantly. For size-conscious applications, I recommend not including everything.
 
-By default, this crate will compile with all supported features. Although this means that in most cases, almost anything you would want to do would work out of the box, in practical terms, this can make the crate rather large. To avoid bloat, it might be best to set `default-features = false` in your "Cargo.toml", and add back in the features you actually need.
+By default, this crate enables a broad set of convenience features. If you care about binary size or compile time, consider turning defaults off and enabling only what you need.
+
+```toml
+[dependencies.simple_endian]
+version = "0.4"
+default-features = false
+features = ["both_endian", "integer_impls"]
+```
 
 The two most useful features are probably the ones that control support for big- and little- endians:
 
@@ -220,7 +399,15 @@ Others are broken into categories:
   * `integer_impls`
   * `byte_impls`
 
-### Text helpers (feature: `text_utf16`, `text_utf32`, `text_fixed`)
+The “simple” feature family enables endianness-invariant built-ins via the `SimpleEndian` trait:
+
+* `simple_bool` – `bool`
+* `simple_byte_impls` – `u8`, `i8`
+* `simple_char_impls` – `char`
+* `simple_string_impls` – `&str`, `String`
+* `simple_all` – enables all of the above
+
+### Text helpers (features: `text_utf16`, `text_utf32`, `text_fixed`)
 
 This crate also includes **optional, feature-gated helpers** for working with Unicode text in
 binary formats and foreign-function interfaces.
@@ -363,31 +550,49 @@ or fixed-width identifiers), enable `text_fixed` and use `FixedCodepointString<N
 
 ## Performance
 
-For the most part, the performance of the endian operations are extremely fast, even compared to native operations.  The main exception is the std::fmt implementations, which are in some cases quite a bit slower than default.  I'm open to suggestions on how to improve the performance, but it might be worth using .to_native() instead of directly printing the wrapped types in performance-critical contexts.
+This section has moved up to **Performance notes** near the top of the README and is backed by the results in [`PERFORMANCE.md`](./PERFORMANCE.md).
 
 ## See Also
 
 This crate allows for the manipulation of specific-endian structures in memory.  It does not provide any facility for reading or writing those structures, which would probably be necessary in most use cases.  See the following other crates for that functionality:
 
-* Rust's standard std::mem::[transmute](https://doc.rust-lang.org/std/mem/fn.transmute.html) call:
+* Rust's standard `std::mem::[transmute](https://doc.rust-lang.org/std/mem/fn.transmute.html)`:
 * [safe-transmute](https://crates.io/crates/safe-transmute)
 * [endian-trait](https://crates.io/crates/endian_trait)
 * [byteordered](https://crates.io/crates/byteordered)
 * [persistance](https://crates.io/crates/persistence) - A library that wraps structs in mmap, and can be used well with this to make those structs portable.
-* [endian-type](https://crates.io/crates/endian-type) - The endian-type library.  This appears to be essentially the same approach as this crate, but contains less functionality.
-* [endian-types](https://crates.io/crates/endian-types) - Another very similar approach.
+* [endian-type](https://crates.io/crates/endian-type) - Essentially the same “typed endianness” idea, but with a different feature set.
+* [endian-types](https://crates.io/crates/endian-types) - Another similar “typed” approach.
 
-## IO helpers (feature: `io`)
+## Similar tools and when to use them
 
-This crate provides optional, feature-gated IO helpers for reading and writing endian-aware values directly from `Read`/`Write` streams. Enable them by adding the `io` feature in your `Cargo.toml`:
+This crate is a good fit when you want endianness to be *part of the type* and enforced throughout your code.
+
+Depending on your problem, these alternatives may be a better fit:
+
+* [`byteorder`](https://crates.io/crates/byteorder): great for parsing from `&[u8]`/`Read` with explicit read/write calls. Ideal when you don’t want to introduce endian-tagged types into your domain model.
+* [`zerocopy`](https://crates.io/crates/zerocopy) and [`bytemuck`](https://crates.io/crates/bytemuck): good when you want safe-ish “view structs as bytes” patterns with strict layout guarantees. `zerocopy` in particular has built-in endian-aware integer wrappers.
+* [`binrw`](https://crates.io/crates/binrw), [`scroll`](https://crates.io/crates/scroll), [`nom`](https://crates.io/crates/nom): higher-level parsing frameworks. Often great for file formats where you want declarative parsing and offsets.
+
+If you just need “read a `u32` from bytes” and you don’t need the typed-wrappers approach, start with `byteorder`. If you’re building reusable wire types and want the compiler to keep you honest, `simple_endian` shines.
+
+## IO helpers (features: `io-core`, `io-std`)
+
+This crate provides optional, feature-gated IO helpers for reading and writing endian-aware values directly from `Read`/`Write` streams.
+
+* `io-core` enables the generic machinery (works for `no_std` environments with custom IO traits)
+* `io-std` enables `std::io::{Read, Write}` integration
+* `io` is a convenience alias for `io-std`
+
+Enable them by adding the `io-std` (or `io`) feature in your `Cargo.toml`:
 
 ```toml
 [dependencies.simple_endian]
-version = "0.3"
-features = ["io"]
+version = "0.4"
+features = ["io-std"]
 ```
 
-The `io` feature enables `std` for this crate (the library remains `#![no_std]` when the feature is not enabled) and exposes the following helpers in `simple_endian::io`:
+With `io-std`, you can use the helper functions:
 
 * `read_specific<R, E>(reader: &mut R) -> io::Result<E>` — Read an endian-wrapped value of type `E` (for example `BigEndian<u32>`) from `reader`.
 * `write_specific<W, E>(writer: &mut W, v: &E) -> io::Result<()>` — Write the endian-wrapped value to `writer`.
@@ -400,7 +605,7 @@ Additionally, helper traits are provided so types can implement custom read/writ
 Big- and Little-endian wrappers implement those traits for the built-in types, so you can use the generic functions like this:
 
 ```rust
-use simple_endian::io::{read_specific, write_specific};
+use simple_endian::{read_specific, write_specific};
 use simple_endian::*;
 use std::io::Cursor;
 
@@ -419,7 +624,6 @@ fn example() -> std::io::Result<()> {
 Notes
 
 * The current implementation supports types with sizes 1, 2, 4, 8 and 16 bytes (integers and floats). Attempts to read/write unsupported sizes return an `io::Error`.
-* Internally the implementation uses low-level conversions to reconstruct values from bytes; the code uses `unsafe` `transmute_copy` in places for genericity. If you need a fully safe approach, we can add a small trait to provide safe byte conversions for each supported `T`.
-* Extensive unit tests for the IO helpers are included and run when you enable the `io` feature (`cargo test --features io`).
+* Extensive unit tests for the IO helpers are included and run when you enable the IO features.
 
-If you'd like, I can add example snippets to the crate root docs or add a dedicated `examples/` folder demonstrating reading/writing structs with mixed endian fields.
+If you want more realistic demos, check out `derive_protocol`, `enum_protocol` (multi-byte tags), `examples/messaging_app/`, and `fat16_driver`.
