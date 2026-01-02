@@ -7,7 +7,7 @@ The goal is to let you *design* and *implement* binary layouts ergonomically, wi
 
 * numeric fields are always read/written with the correct byte order
 * your in-memory logic can stay close to “ordinary” Rust
-* conversions happen explicitly at boundaries (wire  native) so mistakes become type errors
+* conversions happen explicitly at boundaries (wire ↔ native) so mistakes become type errors
 
 At the core, you declare endianness in the **data definition** (`BigEndian<T>`, `LittleEndian<T>`, and shorthand aliases like `u32be`, `u16le`) and then:
 
@@ -43,31 +43,33 @@ Trying to model those with Rust `String`/`&str` directly usually leads to ad-hoc
 
 Text support is opt-in:
 
-* `text_utf8`  fixed-size UTF-8 byte field helpers
-* `text_utf16`  UTF-16 code unit types and conversions
-* `text_utf32`  UTF-32 code unit types and conversions
-* `text_fixed`  fixed-size (const-generic) text field wrappers
-* `text_all`  convenience alias enabling the above
+* `text_utf8` – fixed-size UTF-8 byte field helpers
+* `text_utf16` – UTF-16 code unit types and conversions
+* `text_utf32` – UTF-32 code unit types and conversions
+* `text_fixed` – fixed-size (const-generic) text field wrappers
+* `text_all` – convenience alias enabling the above
 
 These are designed to work with:
 
-* `derive` ( `#[text(...)]` on struct fields)
-* `io-std`/`io-core` ( `read_specific` / `write_specific` for fixed UTF fields)
+* `derive` (via `#[text(...)]` on struct fields)
+* `io-std`/`io-core` (via `read_specific` / `write_specific` for fixed UTF fields)
 
 ### Fixed-size UTF-16/UTF-32 fields (padding semantics)
 
 The fixed types represent **exactly $N$ code units** on the wire. They are not growable strings.
 They come in a few common padding styles, for example:
 
-* `FixedUtf16LeSpacePadded<N>`  UTF-16LE, right-padded with the space code unit (`0x0020`); decoding trims trailing spaces
-* `FixedUtf16LeNullPadded<N>`  UTF-16LE, right-padded with NUL (`0x0000`); decoding trims trailing NULs
+* `FixedUtf16LeSpacePadded<N>` – UTF-16LE, right-padded with the space code unit (`0x0020`); decoding trims trailing spaces
+* `FixedUtf16LeNullPadded<N>` – UTF-16LE, right-padded with NUL (`0x0000`); decoding trims trailing NULs
 
 Similar wrappers exist for BE and for UTF-32.
 
 There are also fixed-size **UTF-8 byte** field wrappers:
 
-* `FixedUtf8NullPadded<N>`  right-padded with `0x00`; decoding trims trailing NULs
-* `FixedUtf8SpacePadded<N>`  right-padded with `0x20` (space); decoding trims trailing spaces
+* `FixedUtf8NullPadded<N>` – right-padded with `0x00`; decoding trims trailing NULs
+* `FixedUtf8SpacePadded<N>` – right-padded with `0x20` (space); decoding trims trailing spaces
+
+Note: the text APIs are entirely feature-gated. If you don't enable any `text_*` features, these types and conversions won't be part of your build.
 
 The important endianness point: **the endianness applies to the UTF code units**, not to the host.
 So `FixedUtf16Le...` is *always* little-endian on the wire, even on a big-endian CPU.
@@ -119,6 +121,7 @@ This is useful for formats that store fixed-width, right-padded UTF-8 bytes.
 
 ```rust
 use simple_endian::Endianize;
+use simple_endian::{read_specific, write_specific};
 
 #[derive(Endianize, Debug)]
 #[endian(be)]
@@ -137,8 +140,13 @@ fn round_trip() {
     name: "ALICE".try_into().unwrap(),
   };
 
-  let decoded: Entry = (&wire).try_into().unwrap();
-  assert_eq!(decoded.name, "ALICE");
+  let mut buf = Vec::new();
+  write_specific(&mut buf, &wire).unwrap();
+
+  let mut cur = std::io::Cursor::new(buf);
+  let decoded: EntryWire = read_specific(&mut cur).unwrap();
+  let name = String::try_from(&decoded.name).unwrap();
+  assert_eq!(name, "ALICE");
 }
 ```
 
@@ -154,7 +162,7 @@ Yes, there are several that cover at least a part of this functionality. Most fo
 
 ## So, why create another one?
 
-Because for a lot of binary-format work, you don’t just want helper functionsyou want a **language for describing the format**.
+Because for a lot of binary-format work, you don’t just want helper functions—you want a **language for describing the format**.
 
 This crate aims to make binary formats feel like honest Rust types:
 
@@ -163,6 +171,16 @@ This crate aims to make binary formats feel like honest Rust types:
 * optional derive + IO helpers make it practical to build complete protocols and storage formats
 
 That makes it a good fit for packet formats, RPC framing, binary logs, file formats, and any place where a stable representation matters.
+
+## Highlights
+
+This repo includes several runnable examples in `./examples/`.
+
+Notable ones:
+
+* `derive_protocol` / `enum_protocol`: derive-based wire types + `read_specific` / `write_specific`
+* `fat16_driver`: a small FAT16 boot-sector / directory walkthrough
+* `ethernet_inspector`: an Ethernet II frame inspector that recognizes VLAN/ARP/IPv4/IPv6/TCP/UDP/ICMP
 
 ## Performance notes
 
