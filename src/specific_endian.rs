@@ -25,6 +25,41 @@ where
     }
 }
 
+/// Endian conversion trait for **owned / non-Copy** types.
+///
+/// The existing [`SpecificEndian`] trait requires `Copy` because many of this crate's
+/// wrapper APIs (like `BigEndian<T>::to_bits()` and `to_native()`) return values by copy.
+///
+/// Text and buffer types (e.g. `Vec<_>`, `String`) are not `Copy`, but we still want to
+/// provide endian-aware conversions for them. This trait mirrors the API of
+/// [`SpecificEndian`] without requiring `Copy`.
+///
+/// This is intentionally a separate trait to avoid a breaking change to the existing
+/// `SpecificEndian` ecosystem.
+#[allow(clippy::wrong_self_convention)]
+pub trait SpecificEndianOwned
+where
+    Self: Clone,
+{
+    /// The big-endian form of this type.
+    type Big;
+    /// The little-endian form of this type.
+    type Little;
+
+    fn to_big_endian(&self) -> Self::Big;
+    fn to_little_endian(&self) -> Self::Little;
+    fn from_big_endian(&self) -> Self::Big;
+    fn from_little_endian(&self) -> Self::Little;
+
+    fn endian(&self) -> Endian {
+        if cfg!(target_endian = "big") {
+            Endian::Big
+        } else {
+            Endian::Little
+        }
+    }
+}
+
 // When `simple_specific_endian_bridge` is enabled we provide no-op SpecificEndian impls for
 // the SimpleEndian + Copy primitives (bool/u8/i8). Those would overlap with the `byte_impls`
 // impls below, so we disable this module in that configuration.

@@ -157,6 +157,147 @@ Others are broken into categories:
   * `integer_impls`
   * `byte_impls`
 
+### Text helpers (feature: `text_utf16`, `text_utf32`, `text_fixed`)
+
+This crate also includes **optional, feature-gated helpers** for working with Unicode text in
+binary formats and foreign-function interfaces.
+
+These features are designed for cases where a format/API specifies a fixed encoding and/or
+endianness (for example: “UTF-16LE code units”, “UTF-32BE code units”, or “exactly 8 UTF-16
+code units stored inline in the struct”).
+
+Enable them like this:
+
+```toml
+[dependencies.simple_endian]
+version = "0.4"
+features = ["text_all"]
+```
+
+Or pick only what you need:
+
+* `text_utf16` – UTF-16 helper types (`Utf16String*`, `Utf16Str*`) and conversions.
+* `text_utf32` – UTF-32 helper types (`Utf32String*`, `Utf32Str*`) and conversions.
+* `text_fixed` – fixed-size, inline string helpers.
+
+#### Endianness-aware text buffers
+
+For UTF-16 and UTF-32, there are **explicit endianness** types and **host-endian aliases**:
+
+* Explicit: `Utf16StringBE` / `Utf16StringLE`, `Utf32StringBE` / `Utf32StringLE`
+* Host-endian aliases: `Utf16String`, `Utf32String` (pick BE/LE based on `target_endian`)
+
+This lets you keep code portable while still being able to target a stable on-the-wire encoding
+when you need it (protocols, file formats, hashing over bytes, etc.).
+
+#### Fixed-size, inline UTF-16 fields in binary structs
+
+Many binary formats (and some ABIs) store strings inline using a fixed number of UTF-16 code
+units. For that scenario, enable `text_fixed` + `text_utf16`.
+
+If you know the *wire format* is UTF-16LE (very common on Windows), the most direct way to
+model it is to wrap the **host-endian** fixed buffer in `LittleEndian<...>`:
+
+* `FixedUtf16CodeUnits<K>` – stores **exactly K UTF-16 code units inline** (host-endian)
+* `LittleEndian<FixedUtf16CodeUnits<K>>` – stores **exactly K UTF-16LE code units inline**
+
+The older explicit-endian names still exist too:
+
+* `FixedUtf16LeCodeUnits<K>` – stores **exactly K UTF-16LE code units inline**
+* `FixedUtf16BeCodeUnits<K>` – stores **exactly K UTF-16BE code units inline**
+
+There are also three convention-specific wrappers for common layouts:
+
+* `FixedUtf16LePacked<K>` / `FixedUtf16BePacked<K>`
+* `FixedUtf16LeNullPadded<K>` / `FixedUtf16BeNullPadded<K>`
+* `FixedUtf16LeSpacePadded<K>` / `FixedUtf16BeSpacePadded<K>`
+
+Example: a C-layout struct containing a fixed-size UTF-16LE name field:
+
+```rust
+use simple_endian::{FixedUtf16CodeUnits, FixedUtf16LeNullPadded, LittleEndian, u32le};
+
+const NAME_UNITS: usize = 16;
+
+#[repr(C)]
+struct Header {
+    id: u32le,
+    // Exactly 16 UTF-16LE code units stored inline.
+    // (a host-endian fixed buffer tagged as little-endian on the wire)
+    name: LittleEndian<FixedUtf16CodeUnits<NAME_UNITS>>,
+}
+
+fn build() -> Header {
+    // (1) From raw code units (infallible; length is in the type).
+    let raw: [LittleEndian<u16>; NAME_UNITS] = [LittleEndian::from(0); NAME_UNITS];
+    // Wrap the fixed buffer in `LittleEndian<...>` to state the **wire encoding**.
+    let name_from_units: LittleEndian<FixedUtf16CodeUnits<NAME_UNITS>> = raw.into();
+
+    // (2) Or TryFrom<&str> (fails only if `encode_utf16()` is longer than NAME_UNITS;
+    //     otherwise it auto-pads with NUL code units).
+    let name_from_str: LittleEndian<FixedUtf16CodeUnits<NAME_UNITS>> = "HELLO".try_into().unwrap();
+
+    // If you prefer convention wrappers (packed / NUL-padded / space-padded), they still exist:
+    let _compat: FixedUtf16LeNullPadded<NAME_UNITS> = "HELLO".try_into().unwrap();
+
+    let _ = name_from_str;
+    Header { id: 1.into(), name: name_from_units }
+}
+```
+
+Example: a C-layout struct containing a fixed-size **UTF-16BE, space-padded** field:
+
+```rust
+use simple_endian::{BigEndian, FixedUtf16BeSpacePadded, u16be, u32be};
+
+const TITLE_UNITS: usize = 12;
+
+#[repr(C)]
+struct Record {
+    // Some big-endian scalar fields...
+    id: u32be,
+    flags: u16be,
+    // Exactly 12 UTF-16BE code units stored inline.
+    // If the encoded string is shorter than TITLE_UNITS, the remainder is padded with U+0020.
+    title: FixedUtf16BeSpacePadded<TITLE_UNITS>,
+}
+
+fn build_record() -> Record {
+    // Initialize from a string input (pads with spaces up to TITLE_UNITS).
+    let title: FixedUtf16BeSpacePadded<TITLE_UNITS> = "HELLO".try_into().unwrap();
+
+    Record {
+        id: 1u32.into(),
+        flags: 0u16.into(),
+        title,
+    }
+}
+
+fn update_title(rec: &mut Record, s: &str) {
+    // Replace it later from another string.
+    rec.title = s.try_into().unwrap();
+
+    // If you need to tag the field as an endian-wrapped value for a generic API,
+    // you can wrap it too (the wrapper uses TryFrom via the inner fixed type).
+    let _wire: BigEndian<FixedUtf16BeSpacePadded<TITLE_UNITS>> = s.try_into().unwrap();
+}
+```
+
+#### Fixed number of Unicode codepoints (for inline tags/labels)
+
+If you need “exactly N Unicode scalar values” inline in a struct (useful for tags, short labels,
+or fixed-width identifiers), enable `text_fixed` and use `FixedCodepointString<N>`.
+
+#### Cross-language / FFI notes (JavaScript, Windows, etc.)
+
+* **JavaScript strings** are specified in terms of UTF-16 code units (historically, “UCS-2”,
+  but modern JS uses UTF-16 semantics). If you’re bridging to JS via FFI or a binary protocol,
+  UTF-16 helpers can be used to make the encoding/decoding explicit.
+* Many native APIs and ABIs (notably **Windows wide strings**) use UTF-16LE code units. The
+  `Utf16*LE` and `FixedUtf16Le*` types are intended to make those representations easy to model.
+* If you need a stable, platform-independent wire format, prefer explicit `*BE`/`*LE` types
+  over host-endian aliases.
+
 ## Performance
 
 For the most part, the performance of the endian operations are extremely fast, even compared to native operations.  The main exception is the std::fmt implementations, which are in some cases quite a bit slower than default.  I'm open to suggestions on how to improve the performance, but it might be worth using .to_native() instead of directly printing the wrapped types in performance-critical contexts.
@@ -185,13 +326,13 @@ features = ["io"]
 
 The `io` feature enables `std` for this crate (the library remains `#![no_std]` when the feature is not enabled) and exposes the following helpers in `simple_endian::io`:
 
-- `read_specific<R, E>(reader: &mut R) -> io::Result<E>` — Read an endian-wrapped value of type `E` (for example `BigEndian<u32>`) from `reader`.
-- `write_specific<W, E>(writer: &mut W, v: &E) -> io::Result<()>` — Write the endian-wrapped value to `writer`.
+* `read_specific<R, E>(reader: &mut R) -> io::Result<E>` — Read an endian-wrapped value of type `E` (for example `BigEndian<u32>`) from `reader`.
+* `write_specific<W, E>(writer: &mut W, v: &E) -> io::Result<()>` — Write the endian-wrapped value to `writer`.
 
 Additionally, helper traits are provided so types can implement custom read/write behavior:
 
-- `EndianRead` — types implementing this expose `read_from<R: Read>(reader: &mut R) -> io::Result<Self>`.
-- `EndianWrite` — types implementing this expose `write_to<W: Write>(&self, writer: &mut W) -> io::Result<()>`.
+* `EndianRead` — types implementing this expose `read_from<R: Read>(reader: &mut R) -> io::Result<Self>`.
+* `EndianWrite` — types implementing this expose `write_to<W: Write>(&self, writer: &mut W) -> io::Result<()>`.
 
 Big- and Little-endian wrappers implement those traits for the built-in types, so you can use the generic functions like this:
 
@@ -213,8 +354,9 @@ fn example() -> std::io::Result<()> {
 ```
 
 Notes
-- The current implementation supports types with sizes 1, 2, 4, 8 and 16 bytes (integers and floats). Attempts to read/write unsupported sizes return an `io::Error`.
-- Internally the implementation uses low-level conversions to reconstruct values from bytes; the code uses `unsafe` `transmute_copy` in places for genericity. If you need a fully safe approach, we can add a small trait to provide safe byte conversions for each supported `T`.
-- Extensive unit tests for the IO helpers are included and run when you enable the `io` feature (`cargo test --features io`).
+
+* The current implementation supports types with sizes 1, 2, 4, 8 and 16 bytes (integers and floats). Attempts to read/write unsupported sizes return an `io::Error`.
+* Internally the implementation uses low-level conversions to reconstruct values from bytes; the code uses `unsafe` `transmute_copy` in places for genericity. If you need a fully safe approach, we can add a small trait to provide safe byte conversions for each supported `T`.
+* Extensive unit tests for the IO helpers are included and run when you enable the `io` feature (`cargo test --features io`).
 
 If you'd like, I can add example snippets to the crate root docs or add a dedicated `examples/` folder demonstrating reading/writing structs with mixed endian fields.
