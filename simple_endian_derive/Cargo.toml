@@ -1,6 +1,6 @@
 [package]
 name = "simple_endian_derive"
-version = "0.4.6"
+version = "0.4.7"
 edition = "2024"
 license = "MIT"
 description = "Proc-macros for the simple_endian crate."
