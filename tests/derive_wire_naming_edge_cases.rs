@@ -14,7 +14,6 @@ fn struct_ending_in_wire_generates_double_wire_suffix() {
     #[derive(Endianize)]
     #[endian(be)]
     #[repr(C)]
-    #[allow(non_camel_case_types)]
     struct DataWire {
         value: u32,
     }

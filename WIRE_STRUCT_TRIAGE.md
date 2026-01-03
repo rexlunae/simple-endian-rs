@@ -35,13 +35,15 @@ let wire_name = format_ident!("{}Wire", name);
 
 All tests pass (as of 2026-01-03):
 - 57 unit tests in `src/lib.rs`
-- 52 integration tests across multiple test files
+- 56 integration tests across multiple test files (including the new edge case tests added in this triage)
+- 113 total tests passing
 - Examples compile and run successfully
 
 Specific Wire-related tests:
 - `tests/derive_endianize.rs`: Basic Wire generation
-- `tests/derive_io_wire_auto_impl.rs`: IO trait implementation  
-- `tests/derive_wire_derive_passthrough.rs`: Trait passthrough
+- `tests/derive_io_wire_auto_impl.rs`: Auto-generated EndianRead/EndianWrite impls for Wire types
+- `tests/derive_wire_derive_passthrough.rs`: Trait passthrough via `#[wire_derive(...)]`
+- `tests/derive_wire_naming_edge_cases.rs`: Edge cases for Wire naming convention (new)
 - Various repr and layout tests
 
 ## Potential Issues and Edge Cases
