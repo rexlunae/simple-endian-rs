@@ -675,7 +675,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 }
 
                 impl #impl_generics ::simple_endian::EndianRead for #wire_name #ty_generics #where_clause {
-                    fn read_from<R: ::std::io::Read>(reader: &mut R) -> ::std::io::Result<Self> {
+                    fn read_from<R: ::std::io::Read + ?Sized>(reader: &mut R) -> ::std::io::Result<Self> {
                         let tag: #tag_ty = ::simple_endian::read_specific(reader)?;
                         let raw: #tag_int = tag.into();
                         match raw {
@@ -689,7 +689,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 }
 
                 impl #impl_generics ::simple_endian::EndianWrite for #wire_name #ty_generics #where_clause {
-                    fn write_to<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
+                    fn write_to<W: ::std::io::Write + ?Sized>(&self, writer: &mut W) -> ::std::io::Result<()> {
                         // SAFETY: If #[wire_repr(packed)] is used, `tag` may be unaligned.
                         let __se_tmp_tag: #tag_ty = unsafe { ::core::ptr::addr_of!(self.tag).read_unaligned() };
                         ::simple_endian::write_specific(writer, &__se_tmp_tag)?;
@@ -768,13 +768,13 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
 
         quote! {
             impl #impl_generics ::simple_endian::EndianRead for #wire_name #ty_generics #where_clause {
-                fn read_from<R: ::std::io::Read>(reader: &mut R) -> ::std::io::Result<Self> {
+                fn read_from<R: ::std::io::Read + ?Sized>(reader: &mut R) -> ::std::io::Result<Self> {
                     Ok(Self { #(#reads,)* })
                 }
             }
 
             impl #impl_generics ::simple_endian::EndianWrite for #wire_name #ty_generics #where_clause {
-                fn write_to<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
+                fn write_to<W: ::std::io::Write + ?Sized>(&self, writer: &mut W) -> ::std::io::Result<()> {
                     #(#writes)*
                     Ok(())
                 }
@@ -798,13 +798,13 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
         // Tuple structs: same story, but with positional fields.
         quote! {
             impl #impl_generics ::simple_endian::EndianRead for #wire_name #ty_generics #where_clause {
-                fn read_from<R: ::std::io::Read>(reader: &mut R) -> ::std::io::Result<Self> {
+                fn read_from<R: ::std::io::Read + ?Sized>(reader: &mut R) -> ::std::io::Result<Self> {
                     Ok(Self( #(#tuple_reads,)* ))
                 }
             }
 
             impl #impl_generics ::simple_endian::EndianWrite for #wire_name #ty_generics #where_clause {
-                fn write_to<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
+                fn write_to<W: ::std::io::Write + ?Sized>(&self, writer: &mut W) -> ::std::io::Result<()> {
                     #(#tuple_writes)*
                     Ok(())
                 }

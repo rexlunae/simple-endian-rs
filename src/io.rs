@@ -696,7 +696,7 @@ pub mod std_io {
 
     fn read_be<R, T>(reader: &mut R) -> io::Result<BigEndian<T>>
     where
-        R: Read,
+        R: Read + ?Sized,
         T: crate::SpecificEndian<T> + Default + Copy + core_io::EndianRepr + 'static,
     {
         // Fast paths for common primitives to avoid heap allocation.
@@ -731,7 +731,7 @@ pub mod std_io {
 
     fn read_le<R, T>(reader: &mut R) -> io::Result<LittleEndian<T>>
     where
-        R: Read,
+        R: Read + ?Sized,
         T: crate::SpecificEndian<T> + Default + Copy + core_io::EndianRepr + 'static,
     {
         if TypeId::of::<T>() == TypeId::of::<u16>() {
@@ -764,7 +764,7 @@ pub mod std_io {
 
     fn write_be<W, T>(writer: &mut W, v: &BigEndian<T>) -> io::Result<()>
     where
-        W: Write,
+        W: Write + ?Sized,
         T: crate::SpecificEndian<T> + Copy + core_io::EndianRepr + 'static,
     {
         if TypeId::of::<T>() == TypeId::of::<u16>() {
@@ -788,7 +788,7 @@ pub mod std_io {
 
     fn write_le<W, T>(writer: &mut W, v: &LittleEndian<T>) -> io::Result<()>
     where
-        W: Write,
+        W: Write + ?Sized,
         T: crate::SpecificEndian<T> + Copy + core_io::EndianRepr + 'static,
     {
         if TypeId::of::<T>() == TypeId::of::<u16>() {
@@ -811,18 +811,18 @@ pub mod std_io {
     }
 
     pub trait EndianRead: Sized {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self>;
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self>;
     }
 
     pub trait EndianWrite {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()>;
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()>;
     }
 
     impl<T> EndianRead for BigEndian<T>
     where
         T: crate::SpecificEndian<T> + Default + Copy + core_io::EndianRepr + 'static,
     {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             read_be::<R, T>(reader)
         }
     }
@@ -831,7 +831,7 @@ pub mod std_io {
     where
         T: crate::SpecificEndian<T> + Default + Copy + core_io::EndianRepr + 'static,
     {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             read_le::<R, T>(reader)
         }
     }
@@ -840,7 +840,7 @@ pub mod std_io {
     where
         T: crate::SpecificEndian<T> + Copy + core_io::EndianRepr + 'static,
     {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             write_be::<W, T>(writer, self)
         }
     }
@@ -849,7 +849,7 @@ pub mod std_io {
     where
         T: crate::SpecificEndian<T> + Copy + core_io::EndianRepr + 'static,
     {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             write_le::<W, T>(writer, self)
         }
     }
@@ -863,7 +863,7 @@ pub mod std_io {
     // impls causes trait coherence conflicts (E0119).
 
     impl<const N: usize> EndianRead for [u8; N] {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut buf = [0u8; N];
             reader.read_exact(&mut buf)?;
             Ok(buf)
@@ -871,7 +871,7 @@ pub mod std_io {
     }
 
     impl<const N: usize> EndianWrite for [u8; N] {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             writer.write_all(self)
         }
     }
@@ -880,7 +880,7 @@ pub mod std_io {
     where
         E: EndianRead + Copy,
     {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut out = [E::read_from(reader)?; N];
             for i in 1..N {
                 out[i] = E::read_from(reader)?;
@@ -893,7 +893,7 @@ pub mod std_io {
     where
         E: EndianWrite,
     {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             for v in self {
                 v.write_to(writer)?;
             }
@@ -901,27 +901,79 @@ pub mod std_io {
         }
     }
 
+    /// Read an endian-aware value of type `E` from a reader.
+    ///
+    /// This helper works with both sized readers (e.g. `std::io::Cursor<Vec<u8>>`) and
+    /// unsized trait objects like `&mut dyn std::io::Read`.
+    ///
+    /// In particular, this is designed to support the common “extension trait” pattern:
+    ///
+    /// ```rust
+    /// use std::io::{self, Read};
+    ///
+    /// pub trait ReadBytesExt: Read {
+    ///     fn read_u32_be(&mut self) -> io::Result<u32>;
+    /// }
+    ///
+    /// impl<R: Read + ?Sized> ReadBytesExt for R {
+    ///     fn read_u32_be(&mut self) -> io::Result<u32> {
+    ///         let be: simple_endian::BigEndian<u32> = simple_endian::read_specific(self)?;
+    ///         Ok(be.to_native())
+    ///     }
+    /// }
+    ///
+    /// fn read_from_dyn(r: &mut dyn Read) -> io::Result<u32> {
+    ///     r.read_u32_be()
+    /// }
+    /// ```
     pub fn read_specific<R, E>(reader: &mut R) -> io::Result<E>
     where
-        R: Read,
+        R: Read + ?Sized,
         E: EndianRead,
     {
         E::read_from(reader)
     }
 
+    /// Write an endian-aware value of type `E` to a writer.
+    ///
+    /// Like [`read_specific`], this supports both sized writers and `&mut dyn std::io::Write`.
     pub fn write_specific<W, E>(writer: &mut W, v: &E) -> io::Result<()>
     where
-        W: Write,
+        W: Write + ?Sized,
         E: EndianWrite,
     {
         v.write_to(writer)
+    }
+
+    /// Dyn-friendly adapter for `read_specific`.
+    ///
+    /// This is purely ergonomic: it lets consumers call the helper from
+    /// `&mut dyn Read` contexts without having to name (or be generic over) the
+    /// reader type.
+    pub fn read_specific_dyn<E>(reader: &mut dyn Read) -> io::Result<E>
+    where
+        E: EndianRead,
+    {
+        read_specific::<dyn Read, E>(reader)
+    }
+
+    /// Dyn-friendly adapter for `write_specific`.
+    ///
+    /// This is purely ergonomic: it lets consumers call the helper from
+    /// `&mut dyn Write` contexts without having to name (or be generic over) the
+    /// writer type.
+    pub fn write_specific_dyn<E>(writer: &mut dyn Write, v: &E) -> io::Result<()>
+    where
+        E: EndianWrite,
+    {
+        write_specific::<dyn Write, E>(writer, v)
     }
 
     // --- Fixed UTF helpers (feature-gated) ---
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
     impl<const N: usize> EndianRead for crate::FixedUtf16BeCodeUnits<N> {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut buf = vec![0u8; 2 * N];
             reader.read_exact(&mut buf)?;
             core_io::read_from_slice::<Self>(&buf)
@@ -931,7 +983,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
     impl<const N: usize> EndianRead for crate::FixedUtf16BeNullPadded<N> {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut buf = vec![0u8; 2 * N];
             reader.read_exact(&mut buf)?;
             core_io::read_from_slice::<Self>(&buf)
@@ -941,7 +993,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
     impl<const N: usize> EndianWrite for crate::FixedUtf16BeNullPadded<N> {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             let mut out = Vec::new();
             core_io::write_to_extend(self, &mut out)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
@@ -951,7 +1003,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
     impl<const N: usize> EndianRead for crate::FixedUtf16BeSpacePadded<N> {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut buf = vec![0u8; 2 * N];
             reader.read_exact(&mut buf)?;
             core_io::read_from_slice::<Self>(&buf)
@@ -961,7 +1013,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
     impl<const N: usize> EndianWrite for crate::FixedUtf16BeSpacePadded<N> {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             let mut out = Vec::new();
             core_io::write_to_extend(self, &mut out)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
@@ -971,7 +1023,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
     impl<const N: usize> EndianWrite for crate::FixedUtf16BeCodeUnits<N> {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             let mut out = Vec::new();
             core_io::write_to_extend(self, &mut out)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
@@ -981,7 +1033,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
     impl<const N: usize> EndianRead for crate::FixedUtf16LeCodeUnits<N> {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut buf = vec![0u8; 2 * N];
             reader.read_exact(&mut buf)?;
             core_io::read_from_slice::<Self>(&buf)
@@ -991,7 +1043,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
     impl<const N: usize> EndianRead for crate::FixedUtf16LeNullPadded<N> {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut buf = vec![0u8; 2 * N];
             reader.read_exact(&mut buf)?;
             core_io::read_from_slice::<Self>(&buf)
@@ -1001,7 +1053,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
     impl<const N: usize> EndianWrite for crate::FixedUtf16LeNullPadded<N> {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             let mut out = Vec::new();
             core_io::write_to_extend(self, &mut out)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
@@ -1011,7 +1063,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
     impl<const N: usize> EndianRead for crate::FixedUtf16LeSpacePadded<N> {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut buf = vec![0u8; 2 * N];
             reader.read_exact(&mut buf)?;
             core_io::read_from_slice::<Self>(&buf)
@@ -1021,7 +1073,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
     impl<const N: usize> EndianWrite for crate::FixedUtf16LeSpacePadded<N> {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             let mut out = Vec::new();
             core_io::write_to_extend(self, &mut out)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
@@ -1031,7 +1083,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
     impl<const N: usize> EndianWrite for crate::FixedUtf16LeCodeUnits<N> {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             let mut out = Vec::new();
             core_io::write_to_extend(self, &mut out)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
@@ -1041,7 +1093,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
     impl<const N: usize> EndianRead for crate::FixedUtf32BeCodeUnits<N> {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut buf = vec![0u8; 4 * N];
             reader.read_exact(&mut buf)?;
             core_io::read_from_slice::<Self>(&buf)
@@ -1051,7 +1103,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
     impl<const N: usize> EndianRead for crate::FixedUtf32BeNullPadded<N> {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut buf = vec![0u8; 4 * N];
             reader.read_exact(&mut buf)?;
             core_io::read_from_slice::<Self>(&buf)
@@ -1061,7 +1113,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
     impl<const N: usize> EndianWrite for crate::FixedUtf32BeNullPadded<N> {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             let mut out = Vec::new();
             core_io::write_to_extend(self, &mut out)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
@@ -1071,7 +1123,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
     impl<const N: usize> EndianRead for crate::FixedUtf32BeSpacePadded<N> {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut buf = vec![0u8; 4 * N];
             reader.read_exact(&mut buf)?;
             core_io::read_from_slice::<Self>(&buf)
@@ -1081,7 +1133,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
     impl<const N: usize> EndianWrite for crate::FixedUtf32BeSpacePadded<N> {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             let mut out = Vec::new();
             core_io::write_to_extend(self, &mut out)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
@@ -1091,7 +1143,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
     impl<const N: usize> EndianWrite for crate::FixedUtf32BeCodeUnits<N> {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             let mut out = Vec::new();
             core_io::write_to_extend(self, &mut out)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
@@ -1101,7 +1153,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
     impl<const N: usize> EndianRead for crate::FixedUtf32LeCodeUnits<N> {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut buf = vec![0u8; 4 * N];
             reader.read_exact(&mut buf)?;
             core_io::read_from_slice::<Self>(&buf)
@@ -1111,7 +1163,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
     impl<const N: usize> EndianRead for crate::FixedUtf32LeNullPadded<N> {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut buf = vec![0u8; 4 * N];
             reader.read_exact(&mut buf)?;
             core_io::read_from_slice::<Self>(&buf)
@@ -1121,7 +1173,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
     impl<const N: usize> EndianWrite for crate::FixedUtf32LeNullPadded<N> {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             let mut out = Vec::new();
             core_io::write_to_extend(self, &mut out)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
@@ -1131,7 +1183,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
     impl<const N: usize> EndianRead for crate::FixedUtf32LeSpacePadded<N> {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut buf = vec![0u8; 4 * N];
             reader.read_exact(&mut buf)?;
             core_io::read_from_slice::<Self>(&buf)
@@ -1141,7 +1193,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
     impl<const N: usize> EndianWrite for crate::FixedUtf32LeSpacePadded<N> {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             let mut out = Vec::new();
             core_io::write_to_extend(self, &mut out)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
@@ -1151,7 +1203,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf32"))]
     impl<const N: usize> EndianWrite for crate::FixedUtf32LeCodeUnits<N> {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             let mut out = Vec::new();
             core_io::write_to_extend(self, &mut out)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
@@ -1163,7 +1215,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf8"))]
     impl<const N: usize> EndianRead for crate::FixedUtf8NullPadded<N> {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut buf = vec![0u8; N];
             reader.read_exact(&mut buf)?;
             core_io::read_from_slice::<Self>(&buf)
@@ -1173,7 +1225,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf8"))]
     impl<const N: usize> EndianWrite for crate::FixedUtf8NullPadded<N> {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             let mut out = Vec::new();
             core_io::write_to_extend(self, &mut out)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
@@ -1183,7 +1235,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf8"))]
     impl<const N: usize> EndianRead for crate::FixedUtf8SpacePadded<N> {
-        fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
+        fn read_from<R: Read + ?Sized>(reader: &mut R) -> io::Result<Self> {
             let mut buf = vec![0u8; N];
             reader.read_exact(&mut buf)?;
             core_io::read_from_slice::<Self>(&buf)
@@ -1193,7 +1245,7 @@ pub mod std_io {
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf8"))]
     impl<const N: usize> EndianWrite for crate::FixedUtf8SpacePadded<N> {
-        fn write_to<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        fn write_to<W: Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
             let mut out = Vec::new();
             core_io::write_to_extend(self, &mut out)
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
