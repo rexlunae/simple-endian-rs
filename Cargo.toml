@@ -1,6 +1,6 @@
 [package]
 name = "simple_endian"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Erica Stith <rexlunae@gmail.com>"]
 edition = "2024"
 license = "MIT"
@@ -61,3 +61,10 @@ text_all = ["text_utf8", "text_utf16", "text_utf32", "text_fixed"]
 io-core = []
 io-std = ["io-core"]
 io = ["io-std"]
+
+[package.metadata.docs.rs]
+# Build docs.rs with all feature-gated APIs enabled so the rendered documentation
+# includes text helpers, IO helpers, and the derive-related exports.
+all-features = true
+# Also show "This item is only available when..." annotations in rustdoc.
+rustdoc-args = ["--cfg", "docsrs"]

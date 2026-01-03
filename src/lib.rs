@@ -1,4 +1,6 @@
 #![cfg_attr(all(not(test), not(any(feature = "io-std", feature = "io"))), no_std)]
+// When building on docs.rs with `--cfg docsrs`, annotate feature-gated items.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 // Enable `alloc` types (Vec/String) for optional text helpers in this crate.
 #[cfg(any(
 	feature = "text_utf8",
