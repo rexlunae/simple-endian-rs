@@ -281,8 +281,8 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
     let endian = parse_container_endian(&input.attrs)?;
     let wrapper_path = endian.wrapper_path_tokens();
 
-	let wire_repr = parse_wire_repr(&input.attrs)?.unwrap_or_else(|| quote!(#[repr(C)]));
-	let wire_derive = parse_wire_derive(&input.attrs)?;
+    let wire_repr = parse_wire_repr(&input.attrs)?.unwrap_or_else(|| quote!(#[repr(C)]));
+    let wire_derive = parse_wire_derive(&input.attrs)?;
 
     let name = &input.ident;
     let vis = &input.vis;
@@ -290,12 +290,20 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let wire_name = format_ident!("{}Wire", name);
+    // If #[wire_derive(...)] is not present, don't emit a bare `#` token; emit nothing.
+    let wire_derive_struct_attr: proc_macro2::TokenStream = wire_derive.clone().unwrap_or_else(|| quote!());
+    let wire_derive_union_attr: proc_macro2::TokenStream = wire_derive.unwrap_or_else(|| quote!());
 
     let mut wire_field_idents: Vec<syn::Ident> = Vec::new();
+    let mut wire_field_indices: Vec<syn::Index> = Vec::new();
     let mut logical_field_idents: Vec<syn::Ident> = Vec::new();
     let mut logical_field_types: Vec<syn::Type> = Vec::new();
     let mut logical_is_text: Vec<bool> = Vec::new();
     let mut is_union = false;
+    // Helpful debug hook: opt-in macro expansion dump.
+    // Usage: `SE_DERIVE_DEBUG=1 cargo test ...`
+    let __se_debug_dump = ::std::env::var("SE_DERIVE_DEBUG").ok().as_deref() == Some("1");
+
     let wire_item = match &input.data {
         Data::Struct(data) => {
             let fields = match &data.fields {
@@ -374,13 +382,18 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 }
                 Fields::Unnamed(fields) => {
                     let mut wire_fields = Vec::with_capacity(fields.unnamed.len());
-                    for f in &fields.unnamed {
+                    for (idx, f) in fields.unnamed.iter().enumerate() {
                         if has_text_attr(&f.attrs) {
                             return Err(Error::new(
                                 f.span(),
                                 "#[text(...)] is only supported on named fields for now",
                             ));
                         }
+
+                        wire_field_indices.push(syn::Index::from(idx));
+                        logical_field_types.push(f.ty.clone());
+                        logical_is_text.push(false);
+
                         let ty = &f.ty;
                         wire_fields.push(quote!(#wrapper_path<#ty>));
                     }
@@ -389,12 +402,28 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 Fields::Unit => quote!(;),
             };
 
-            let wire = quote! {
-				#wire_derive
-                #wire_repr
-                #[allow(non_camel_case_types)]
-                #vis struct #wire_name #generics #fields
+            let struct_def = match &data.fields {
+                Fields::Named(_) => quote! {
+					#wire_derive_struct_attr
+                    #wire_repr
+                    #[allow(non_camel_case_types)]
+                    #vis struct #wire_name #generics #fields
+                },
+                Fields::Unnamed(_) => quote! {
+					#wire_derive_struct_attr
+                    #wire_repr
+                    #[allow(non_camel_case_types)]
+                    #vis struct #wire_name #generics #fields ;
+                },
+                Fields::Unit => quote! {
+					#wire_derive_struct_attr
+                    #wire_repr
+                    #[allow(non_camel_case_types)]
+                    #vis struct #wire_name #generics #fields
+                },
             };
+
+            let wire = struct_def;
 
             wire
         }
@@ -542,8 +571,8 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                             });
                         }
 
-                        payload_structs.push(quote! {
-                            #wire_derive
+							payload_structs.push(quote! {
+							#wire_derive_struct_attr
                             #wire_repr
                             #[allow(non_camel_case_types)]
                             #vis struct #v_payload_struct #generics {
@@ -584,9 +613,9 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             }
 
             // Payload union: if there are no payload variants, use a zero-sized placeholder.
-            let payload_def = if any_payload {
+			let payload_def = if any_payload {
                 quote! {
-                    #wire_derive
+				#wire_derive_union_attr
                     #wire_repr
                     #[allow(non_snake_case)]
                     #vis union #payload_name #generics {
@@ -597,7 +626,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 }
             } else {
                 quote! {
-                    #wire_derive
+				#wire_derive_union_attr
                     #wire_repr
                     #vis union #payload_name #generics {
                         _unused: [u8; 0],
@@ -610,7 +639,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
 
                 #payload_def
 
-				#wire_derive
+    			#wire_derive_struct_attr
                 #wire_repr
                 #[allow(non_camel_case_types)]
                 #vis struct #wire_name #generics {
@@ -681,7 +710,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             }
 
             quote! {
-                #wire_derive
+				#wire_derive_union_attr
                 #wire_repr
                 #[allow(non_camel_case_types)]
                 #vis union #wire_name #generics {
@@ -691,8 +720,8 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
         }
     };
 
-    // If we have named fields, we can generate IO impls by reading/writing each field in order.
-    // (Tuple structs can be added later; named fields cover the main repr(C) wire-layout use-case.)
+    // If we have fields, we can generate IO impls by reading/writing each field in order.
+    // Important: keep packed wire types safe by avoiding `&self.field` on packed structs.
     let io_impls = if !wire_field_idents.is_empty() && !is_union {
         let reads = wire_field_idents
             .iter()
@@ -728,8 +757,40 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 }
             }
         }
+    } else if !wire_field_indices.is_empty() && !is_union {
+        let tuple_reads = wire_field_indices
+            .iter()
+            .map(|_| quote!(::simple_endian::read_specific(reader)?));
+
+        let tuple_writes = wire_field_indices.iter().enumerate().map(|(idx, i)| {
+            let tmp = format_ident!("__se_tmp_{}", idx);
+            quote! {
+                // SAFETY: For packed wire types, tuple fields might be unaligned, so we must load them
+                // via `read_unaligned` into a temporary.
+                let #tmp = unsafe { ::core::ptr::addr_of!(self.#i).read_unaligned() };
+                ::simple_endian::write_specific(writer, &#tmp)?;
+            }
+        });
+
+        // Tuple structs: same story, but with positional fields.
+        quote! {
+            #[cfg(all(feature = "io-std", feature = "io"))]
+            impl #impl_generics ::simple_endian::EndianRead for #wire_name #ty_generics #where_clause {
+                fn read_from<R: ::std::io::Read>(reader: &mut R) -> ::std::io::Result<Self> {
+                    Ok(Self( #(#tuple_reads,)* ))
+                }
+            }
+
+            #[cfg(all(feature = "io-std", feature = "io"))]
+            impl #impl_generics ::simple_endian::EndianWrite for #wire_name #ty_generics #where_clause {
+                fn write_to<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
+                    #(#tuple_writes)*
+                    Ok(())
+                }
+            }
+        }
     } else {
-        // Unit / tuple structs: no IO impls for now.
+        // Unit structs or unions (no safe/default IO impls).
         quote! {}
     };
 
@@ -741,9 +802,10 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
     //     ONLY when there are no #[text] fields.
     // - `TryFrom<Wire> for Logical` can fail for text fields (invalid encoding), so we model that explicitly.
     let has_any_text = logical_is_text.iter().any(|&b| b);
-    let struct_conversions = if !wire_field_idents.is_empty() && !is_union {
-        // From<Logical> for Wire: only generate if there are no #[text] fields.
-        let from_logical_for_wire = if !has_any_text {
+    // Conversions are only generated for structs (named or tuple). Enums already have bespoke wire layout.
+    let struct_conversions = if matches!(&input.data, Data::Struct(_)) && (!wire_field_idents.is_empty() || !wire_field_indices.is_empty()) && !is_union {
+    // From<Logical> for Wire: only generate if there are no #[text] fields.
+    let from_logical_for_wire = if !has_any_text {
             let assigns = logical_field_idents
                 .iter()
                 .zip(logical_field_types.iter())
@@ -756,10 +818,31 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                         quote!(#f: v.#f.into())
                     }
                 });
-            quote! {
-                impl #impl_generics ::core::convert::From<#name #ty_generics> for #wire_name #ty_generics #where_clause {
-                    fn from(v: #name #ty_generics) -> Self {
-                        Self { #(#assigns,)* }
+
+            let tuple_assigns = logical_field_types.iter().enumerate().map(|(idx, ty)| {
+                let i = syn::Index::from(idx);
+                if is_u8_array_type(ty) {
+                    quote!(v.#i)
+                } else if array_elem_and_len(ty).is_some() {
+                    quote!(v.#i.map(::core::convert::Into::into))
+                } else {
+                    quote!(v.#i.into())
+                }
+            });
+            if !wire_field_idents.is_empty() {
+                quote! {
+                    impl #impl_generics ::core::convert::From<#name #ty_generics> for #wire_name #ty_generics #where_clause {
+                        fn from(v: #name #ty_generics) -> Self {
+                            Self { #(#assigns,)* }
+                        }
+                    }
+                }
+            } else {
+                quote! {
+                    impl #impl_generics ::core::convert::From<#name #ty_generics> for #wire_name #ty_generics #where_clause {
+                        fn from(v: #name #ty_generics) -> Self {
+                            Self( #(#tuple_assigns,)* )
+                        }
                     }
                 }
             }
@@ -767,7 +850,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             quote! {}
         };
 
-        // TryFrom<Wire> for Logical: always generate for structs with named fields.
+        // TryFrom<Wire> for Logical: always generate for structs.
         // Numeric fields: `.to_native()`
         // Text fields: `String::try_from(&wire_field)`
         let try_assigns = logical_field_idents
@@ -804,25 +887,79 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 }
             });
 
+        let tuple_try_assigns = logical_field_types
+            .iter()
+            .zip(logical_is_text.iter())
+            .enumerate()
+            .map(|(idx, (ty, is_text))| {
+                let i = syn::Index::from(idx);
+                let tmp = format_ident!("__se_tmp_{}", idx);
+                if *is_text {
+                    quote!({
+                        let #tmp = unsafe { ::core::ptr::addr_of!(v.#i).read_unaligned() };
+                        ::std::string::String::try_from(&#tmp)
+                            .map_err(|e| ::simple_endian::FixedTextError::from(e))?
+                    })
+                } else if is_u8_array_type(ty) {
+                    quote!({
+                        let #tmp = unsafe { ::core::ptr::addr_of!(v.#i).read_unaligned() };
+                        #tmp
+                    })
+                } else if array_elem_and_len(ty).is_some() {
+                    quote!({
+                        let #tmp = unsafe { ::core::ptr::addr_of!(v.#i).read_unaligned() };
+                        #tmp.map(|x| x.to_native())
+                    })
+                } else {
+                    quote!({
+                        let #tmp = unsafe { ::core::ptr::addr_of!(v.#i).read_unaligned() };
+                        #tmp.to_native()
+                    })
+                }
+            });
+
         // Choose error type:
         // `String::try_from(&FixedText)` uses `simple_endian::FixedTextError`.
         // This impl also requires `alloc` (for `String`) and `text_fixed`.
         let try_from_wire_for_logical = if has_any_text {
-            quote! {
-                #[cfg(all(feature = "simple_string_impls", feature = "text_fixed"))]
-                impl #impl_generics ::core::convert::TryFrom<#wire_name #ty_generics> for #name #ty_generics #where_clause {
-                    type Error = ::simple_endian::FixedTextError;
+            if !wire_field_idents.is_empty() {
+                quote! {
+                    #[cfg(all(feature = "simple_string_impls", feature = "text_fixed"))]
+                    impl #impl_generics ::core::convert::TryFrom<#wire_name #ty_generics> for #name #ty_generics #where_clause {
+                        type Error = ::simple_endian::FixedTextError;
 
-                    fn try_from(v: #wire_name #ty_generics) -> Result<Self, Self::Error> {
-                        Ok(Self { #(#try_assigns,)* })
+                        fn try_from(v: #wire_name #ty_generics) -> Result<Self, Self::Error> {
+                            Ok(Self { #(#try_assigns,)* })
+                        }
+                    }
+                }
+            } else {
+                quote! {
+                    #[cfg(all(feature = "simple_string_impls", feature = "text_fixed"))]
+                    impl #impl_generics ::core::convert::TryFrom<#wire_name #ty_generics> for #name #ty_generics #where_clause {
+                        type Error = ::simple_endian::FixedTextError;
+
+                        fn try_from(v: #wire_name #ty_generics) -> Result<Self, Self::Error> {
+                            Ok(Self( #(#tuple_try_assigns,)* ))
+                        }
                     }
                 }
             }
         } else {
-            quote! {
-                impl #impl_generics ::core::convert::From<#wire_name #ty_generics> for #name #ty_generics #where_clause {
-                    fn from(v: #wire_name #ty_generics) -> Self {
-                        Self { #(#try_assigns,)* }
+            if !wire_field_idents.is_empty() {
+                quote! {
+                    impl #impl_generics ::core::convert::From<#wire_name #ty_generics> for #name #ty_generics #where_clause {
+                        fn from(v: #wire_name #ty_generics) -> Self {
+                            Self { #(#try_assigns,)* }
+                        }
+                    }
+                }
+            } else {
+                quote! {
+                    impl #impl_generics ::core::convert::From<#wire_name #ty_generics> for #name #ty_generics #where_clause {
+                        fn from(v: #wire_name #ty_generics) -> Self {
+                            Self( #(#tuple_try_assigns,)* )
+                        }
                     }
                 }
             }
@@ -849,6 +986,10 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             fn _assert_where_clause #impl_generics () #where_clause {}
         };
     };
+
+    if __se_debug_dump {
+        eprintln!("[simple_endian_derive] expanded for {}:\n{}\n", name, expanded);
+    }
 
     Ok(expanded.into())
 }
