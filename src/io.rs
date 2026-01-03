@@ -68,6 +68,7 @@ pub mod core_io {
             where
                 $( $T: EndianRepr + Copy ),+
             {
+                #[allow(unused_assignments)]
                 fn from_u128(v: u128) -> Self {
                     let bytes = v.to_be_bytes();
                     let total = 0usize $( + size_of::<$T>() )+;
@@ -99,6 +100,7 @@ pub mod core_io {
                     )
                 }
 
+                #[allow(unused_assignments)]
                 fn to_u128(self) -> u128 {
                     let mut bytes = [0u8; 16];
                     let total = 0usize $( + size_of::<$T>() )+;
