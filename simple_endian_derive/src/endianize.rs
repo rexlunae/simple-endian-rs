@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use syn::{
     parse_macro_input, spanned::Spanned, Attribute, Data, DeriveInput, Error, Fields, LitStr,
 };
@@ -281,7 +281,29 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
     let endian = parse_container_endian(&input.attrs)?;
     let wrapper_path = endian.wrapper_path_tokens();
 
-    let wire_repr = parse_wire_repr(&input.attrs)?.unwrap_or_else(|| quote!(#[repr(C)]));
+    // If the input type is explicitly `repr(C, packed)` we should preserve that on the
+    // generated `*Wire` type by default, otherwise its layout won't match the on-wire
+    // byte layout.
+    //
+    // Users can still override with `#[wire_repr(...)]` when they want something else.
+    let input_is_repr_packed = input.attrs.iter().any(|a| {
+        if !a.path().is_ident("repr") {
+            return false;
+        }
+
+        // Best-effort detection without doing full meta parsing.
+        // Accept any repr that contains `packed` whatsoever.
+        let s = a.meta.to_token_stream().to_string();
+        s.contains("packed")
+    });
+
+    let wire_repr = parse_wire_repr(&input.attrs)?.unwrap_or_else(|| {
+        if input_is_repr_packed {
+            quote!(#[repr(C, packed)])
+        } else {
+            quote!(#[repr(C)])
+        }
+    });
     let wire_derive = parse_wire_derive(&input.attrs)?;
 
     let name = &input.ident;
