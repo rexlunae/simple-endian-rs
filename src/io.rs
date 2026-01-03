@@ -17,32 +17,60 @@ pub mod core_io {
     }
 
     impl EndianRepr for u8 {
-        fn from_u128(v: u128) -> Self { v as u8 }
-        fn to_u128(self) -> u128 { self as u128 }
+        fn from_u128(v: u128) -> Self {
+            v as u8
+        }
+        fn to_u128(self) -> u128 {
+            self as u128
+        }
     }
     impl EndianRepr for u16 {
-        fn from_u128(v: u128) -> Self { v as u16 }
-        fn to_u128(self) -> u128 { self as u128 }
+        fn from_u128(v: u128) -> Self {
+            v as u16
+        }
+        fn to_u128(self) -> u128 {
+            self as u128
+        }
     }
     impl EndianRepr for u32 {
-        fn from_u128(v: u128) -> Self { v as u32 }
-        fn to_u128(self) -> u128 { self as u128 }
+        fn from_u128(v: u128) -> Self {
+            v as u32
+        }
+        fn to_u128(self) -> u128 {
+            self as u128
+        }
     }
     impl EndianRepr for u64 {
-        fn from_u128(v: u128) -> Self { v as u64 }
-        fn to_u128(self) -> u128 { self as u128 }
+        fn from_u128(v: u128) -> Self {
+            v as u64
+        }
+        fn to_u128(self) -> u128 {
+            self as u128
+        }
     }
     impl EndianRepr for u128 {
-        fn from_u128(v: u128) -> Self { v }
-        fn to_u128(self) -> u128 { self }
+        fn from_u128(v: u128) -> Self {
+            v
+        }
+        fn to_u128(self) -> u128 {
+            self
+        }
     }
     impl EndianRepr for f32 {
-        fn from_u128(v: u128) -> Self { f32::from_bits(v as u32) }
-        fn to_u128(self) -> u128 { self.to_bits() as u128 }
+        fn from_u128(v: u128) -> Self {
+            f32::from_bits(v as u32)
+        }
+        fn to_u128(self) -> u128 {
+            self.to_bits() as u128
+        }
     }
     impl EndianRepr for f64 {
-        fn from_u128(v: u128) -> Self { f64::from_bits(v as u64) }
-        fn to_u128(self) -> u128 { self.to_bits() as u128 }
+        fn from_u128(v: u128) -> Self {
+            f64::from_bits(v as u64)
+        }
+        fn to_u128(self) -> u128 {
+            self.to_bits() as u128
+        }
     }
 
     // --- Tuple support ------------------------------------------------------
@@ -137,15 +165,69 @@ pub mod core_io {
     impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E));
     impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F));
     impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G));
-    impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H));
-    impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I));
-    impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I), (9, J));
-    impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I), (9, J), (10, K));
-    impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I), (9, J), (10, K), (11, L));
+    impl_endianrepr_for_tuple!(
+        (0, A),
+        (1, B),
+        (2, C),
+        (3, D),
+        (4, E),
+        (5, F),
+        (6, G),
+        (7, H)
+    );
+    impl_endianrepr_for_tuple!(
+        (0, A),
+        (1, B),
+        (2, C),
+        (3, D),
+        (4, E),
+        (5, F),
+        (6, G),
+        (7, H),
+        (8, I)
+    );
+    impl_endianrepr_for_tuple!(
+        (0, A),
+        (1, B),
+        (2, C),
+        (3, D),
+        (4, E),
+        (5, F),
+        (6, G),
+        (7, H),
+        (8, I),
+        (9, J)
+    );
+    impl_endianrepr_for_tuple!(
+        (0, A),
+        (1, B),
+        (2, C),
+        (3, D),
+        (4, E),
+        (5, F),
+        (6, G),
+        (7, H),
+        (8, I),
+        (9, J),
+        (10, K)
+    );
+    impl_endianrepr_for_tuple!(
+        (0, A),
+        (1, B),
+        (2, C),
+        (3, D),
+        (4, E),
+        (5, F),
+        (6, G),
+        (7, H),
+        (8, I),
+        (9, J),
+        (10, K),
+        (11, L)
+    );
 
     // read_be_from_slice/read_le_from_slice removed: use `FromSlice` impls
     // and the convenience `read_from_slice` function below instead.
-
 
     // (private write helpers removed; use `write_to_extend` on the FromSlice impl)
 
@@ -194,7 +276,9 @@ pub mod core_io {
         let default = T::default();
         match default.endian() {
             crate::Endian::Big => read_from_slice::<BigEndian<T>>(data).map(EndianValue::Big),
-            crate::Endian::Little => read_from_slice::<LittleEndian<T>>(data).map(EndianValue::Little),
+            crate::Endian::Little => {
+                read_from_slice::<LittleEndian<T>>(data).map(EndianValue::Little)
+            }
         }
     }
 
@@ -205,7 +289,6 @@ pub mod core_io {
     {
         Ok(from_bytes::<T>(data)?.to_native())
     }
-
 
     /// Trait describing types that can be read from / written to a byte slice
     /// representation. Implemented for `BigEndian<T>` and `LittleEndian<T>`.
@@ -219,7 +302,10 @@ pub mod core_io {
         E::read_from_slice(data)
     }
 
-    pub fn write_to_extend<E: FromSlice>(v: &E, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
+    pub fn write_to_extend<E: FromSlice>(
+        v: &E,
+        out: &mut impl Extend<u8>,
+    ) -> Result<(), &'static str> {
         v.write_to_extend(out)
     }
 
@@ -251,7 +337,9 @@ pub mod core_io {
                 return Err("unsupported size");
             }
             // Emit the last `n` bytes (compact encoding).
-            out.extend(core::iter::IntoIterator::into_iter(bytes[16 - n..].iter().copied()));
+            out.extend(core::iter::IntoIterator::into_iter(
+                bytes[16 - n..].iter().copied(),
+            ));
             Ok(())
         }
     }
@@ -279,7 +367,9 @@ pub mod core_io {
             if !(n == 1 || n == 2 || n == 4 || n == 8 || n == 16) {
                 return Err("unsupported size");
             }
-            out.extend(core::iter::IntoIterator::into_iter(bytes[..n].iter().copied()));
+            out.extend(core::iter::IntoIterator::into_iter(
+                bytes[..n].iter().copied(),
+            ));
             Ok(())
         }
     }
@@ -317,7 +407,9 @@ pub mod core_io {
         fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
             for cu in self.as_units() {
                 // Serialize the *native scalar* as UTF-16BE on the wire.
-                out.extend(core::iter::IntoIterator::into_iter(cu.to_native().to_be_bytes()));
+                out.extend(core::iter::IntoIterator::into_iter(
+                    cu.to_native().to_be_bytes(),
+                ));
             }
             Ok(())
         }
@@ -354,7 +446,9 @@ pub mod core_io {
         fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
             for cu in self.as_units() {
                 // Serialize the *native scalar* as UTF-16LE on the wire.
-                out.extend(core::iter::IntoIterator::into_iter(cu.to_native().to_le_bytes()));
+                out.extend(core::iter::IntoIterator::into_iter(
+                    cu.to_native().to_le_bytes(),
+                ));
             }
             Ok(())
         }
@@ -372,7 +466,12 @@ pub mod core_io {
             while i < N {
                 let base = 4 * i;
                 // Parse standard UTF-32BE wire bytes into a native scalar.
-                let native = u32::from_be_bytes([data[base], data[base + 1], data[base + 2], data[base + 3]]);
+                let native = u32::from_be_bytes([
+                    data[base],
+                    data[base + 1],
+                    data[base + 2],
+                    data[base + 3],
+                ]);
                 // Store as correctly endian-tagged bits.
                 #[cfg(target_endian = "big")]
                 {
@@ -391,7 +490,9 @@ pub mod core_io {
         fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
             for cu in self.as_units() {
                 // Serialize the *native scalar* as UTF-32BE on the wire.
-                out.extend(core::iter::IntoIterator::into_iter(cu.to_native().to_be_bytes()));
+                out.extend(core::iter::IntoIterator::into_iter(
+                    cu.to_native().to_be_bytes(),
+                ));
             }
             Ok(())
         }
@@ -409,7 +510,12 @@ pub mod core_io {
             while i < N {
                 let base = 4 * i;
                 // Parse standard UTF-32LE wire bytes into a native scalar.
-                let native = u32::from_le_bytes([data[base], data[base + 1], data[base + 2], data[base + 3]]);
+                let native = u32::from_le_bytes([
+                    data[base],
+                    data[base + 1],
+                    data[base + 2],
+                    data[base + 3],
+                ]);
                 // Store as correctly endian-tagged bits.
                 #[cfg(target_endian = "little")]
                 {
@@ -428,7 +534,9 @@ pub mod core_io {
         fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
             for cu in self.as_units() {
                 // Serialize the *native scalar* as UTF-32LE on the wire.
-                out.extend(core::iter::IntoIterator::into_iter(cu.to_native().to_le_bytes()));
+                out.extend(core::iter::IntoIterator::into_iter(
+                    cu.to_native().to_le_bytes(),
+                ));
             }
             Ok(())
         }
@@ -546,7 +654,9 @@ pub mod core_io {
             }
             let mut out = [0u8; N];
             out.copy_from_slice(&data[..N]);
-            Ok(crate::FixedUtf8NullPadded::from(crate::FixedUtf8Bytes::from(out)))
+            Ok(crate::FixedUtf8NullPadded::from(
+                crate::FixedUtf8Bytes::from(out),
+            ))
         }
 
         fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
@@ -563,7 +673,9 @@ pub mod core_io {
             }
             let mut out = [0u8; N];
             out.copy_from_slice(&data[..N]);
-            Ok(crate::FixedUtf8SpacePadded::from(crate::FixedUtf8Bytes::from(out)))
+            Ok(crate::FixedUtf8SpacePadded::from(
+                crate::FixedUtf8Bytes::from(out),
+            ))
         }
 
         fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
@@ -578,9 +690,9 @@ pub mod core_io {
 pub mod std_io {
     use super::core_io;
     use crate::{BigEndian, LittleEndian};
-    use std::io::{self, Read, Write};
-    use core::mem::size_of;
     use core::any::TypeId;
+    use core::mem::size_of;
+    use std::io::{self, Read, Write};
 
     fn read_be<R, T>(reader: &mut R) -> io::Result<BigEndian<T>>
     where
@@ -715,7 +827,6 @@ pub mod std_io {
         }
     }
 
-
     impl<T> EndianRead for LittleEndian<T>
     where
         T: crate::SpecificEndian<T> + Default + Copy + core_io::EndianRepr + 'static,
@@ -725,7 +836,6 @@ pub mod std_io {
         }
     }
 
-
     impl<T> EndianWrite for BigEndian<T>
     where
         T: crate::SpecificEndian<T> + Copy + core_io::EndianRepr + 'static,
@@ -734,7 +844,6 @@ pub mod std_io {
             write_be::<W, T>(writer, self)
         }
     }
-
 
     impl<T> EndianWrite for LittleEndian<T>
     where
@@ -752,7 +861,6 @@ pub mod std_io {
     // above (`impl<T> EndianRead/EndianWrite for BigEndian<T>`) already cover
     // tuples once they implement `core_io::EndianRepr`. Adding explicit tuple
     // impls causes trait coherence conflicts (E0119).
-
 
     impl<const N: usize> EndianRead for [u8; N] {
         fn read_from<R: Read>(reader: &mut R) -> io::Result<Self> {
@@ -1097,8 +1205,8 @@ pub mod std_io {
 #[cfg(all(test, feature = "io-std"))]
 mod tests {
     use super::std_io::*;
-    use std::io::Cursor;
     use crate::{BigEndian, LittleEndian, SpecificEndian};
+    use std::io::Cursor;
 
     fn round_trip_be<T>(val: T)
     where

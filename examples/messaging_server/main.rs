@@ -7,7 +7,6 @@
     allow(dead_code, unused_imports)
 )]
 
-
 #[cfg(all(feature = "derive", feature = "io-std", feature = "text_all"))]
 #[path = "../messaging_app/protocol.rs"]
 mod protocol;

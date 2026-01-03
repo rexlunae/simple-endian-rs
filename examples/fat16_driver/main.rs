@@ -22,7 +22,7 @@ mod driver;
 use simple_endian::{u16le, u32le};
 
 #[cfg(all(feature = "io-std", feature = "text_all"))]
-use simple_endian::{write_specific, FixedUtf16LeSpacePadded};
+use simple_endian::{FixedUtf16LeSpacePadded, write_specific};
 use std::io::{Cursor, Read, Seek, SeekFrom};
 
 const BYTES_PER_SECTOR: usize = 512;
@@ -63,15 +63,15 @@ fn build_toy_fat16_image() -> Vec<u8> {
     // 0x24: FAT16 extended (26) -- in the classic FAT16 boot sector this is the EBR region
     // 0x1FE: signature 0x55AA
 
-        // Write jump + OEM as raw fixed-size byte buffers.
-        {
-            let boot1 = driver::BootJumpOem {
-                jump: [0xEB, 0x3C, 0x90],
-                oem: *b"MSDOS5.0",
-            };
-            img[0x00..0x03].copy_from_slice(&boot1.jump);
-            img[0x03..0x0B].copy_from_slice(&boot1.oem);
-        }
+    // Write jump + OEM as raw fixed-size byte buffers.
+    {
+        let boot1 = driver::BootJumpOem {
+            jump: [0xEB, 0x3C, 0x90],
+            oem: *b"MSDOS5.0",
+        };
+        img[0x00..0x03].copy_from_slice(&boot1.jump);
+        img[0x03..0x0B].copy_from_slice(&boot1.oem);
+    }
 
     // Write BPB using the generated wire type.
     // Offsets are from start of boot sector.
@@ -121,12 +121,12 @@ fn build_toy_fat16_image() -> Vec<u8> {
 
     // fs_type is raw bytes in the boot sector; keep it raw bytes.
     // NOTE: must be written *after* the EBR chunk; it overlaps that region.
-        {
-            let fs_type = driver::FsTypeAscii8 {
-                bytes: *b"FAT16   ",
-            };
-            img[0x36..0x3E].copy_from_slice(&fs_type.bytes);
-        }
+    {
+        let fs_type = driver::FsTypeAscii8 {
+            bytes: *b"FAT16   ",
+        };
+        img[0x36..0x3E].copy_from_slice(&fs_type.bytes);
+    }
 
     #[cfg(all(feature = "derive", feature = "io-std", feature = "text_all"))]
     {
@@ -143,12 +143,12 @@ fn build_toy_fat16_image() -> Vec<u8> {
     #[cfg(all(feature = "derive", feature = "io-std", feature = "text_all"))]
     {
         let root_sector_off = 2 * bytes_per_sector;
-            let name83 = driver::ShortName83 {
-                name: *b"HELLO   ",
-                ext: *b"TXT",
-            };
-            img[root_sector_off..root_sector_off + 8].copy_from_slice(&name83.name);
-            img[root_sector_off + 8..root_sector_off + 11].copy_from_slice(&name83.ext);
+        let name83 = driver::ShortName83 {
+            name: *b"HELLO   ",
+            ext: *b"TXT",
+        };
+        img[root_sector_off..root_sector_off + 8].copy_from_slice(&name83.name);
+        img[root_sector_off + 8..root_sector_off + 11].copy_from_slice(&name83.ext);
     }
 
     // Write the remaining 21 bytes of the entry using the generated wire type.

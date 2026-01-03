@@ -6,7 +6,9 @@
     feature = "io-std"
 ))]
 
-use simple_endian::{read_specific, write_specific, BigEndian, EndianRead, EndianWrite, LittleEndian};
+use simple_endian::{
+    BigEndian, EndianRead, EndianWrite, LittleEndian, read_specific, write_specific,
+};
 
 #[test]
 fn big_endian_tuple_roundtrips_via_io() {

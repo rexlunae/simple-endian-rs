@@ -8,5 +8,5 @@
 
 #[cfg(feature = "text_fixed")]
 pub mod fixed {
-	pub use crate::text_ops::fixed::utf8::*;
+    pub use crate::text_ops::fixed::utf8::*;
 }

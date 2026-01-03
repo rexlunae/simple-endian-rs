@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use syn::{
-    parse_macro_input, spanned::Spanned, Attribute, Data, DeriveInput, Error, Fields, LitStr,
+    Attribute, Data, DeriveInput, Error, Fields, LitStr, parse_macro_input, spanned::Spanned,
 };
 
 fn se_tmp_ident_for_field(field: &syn::Ident) -> syn::Ident {
@@ -24,7 +24,10 @@ fn parse_wire_repr(attrs: &[Attribute]) -> Result<Option<proc_macro2::TokenStrea
             continue;
         }
         if out.is_some() {
-            return Err(Error::new(attr.span(), "duplicate #[wire_repr(...)] attribute"));
+            return Err(Error::new(
+                attr.span(),
+                "duplicate #[wire_repr(...)] attribute",
+            ));
         }
 
         let meta = attr.meta.clone();
@@ -145,7 +148,7 @@ fn parse_enum_repr_int(attrs: &[Attribute]) -> Result<syn::Ident, Error> {
                 return Err(Error::new(
                     ident.span(),
                     "Endianize enums require an explicit #[repr(u8|u16|u32|u64)]",
-                ))
+                ));
             }
         }
     }
@@ -168,13 +171,14 @@ fn is_fixed_text_wire_type(ty: &syn::Type) -> bool {
     // This keeps `#[derive(Endianize)]` usable for structs that want to spell
     // the field type directly instead of using `#[text(...)]`.
     let syn::Type::Path(p) = ty else { return false };
-    let Some(seg) = p.path.segments.last() else { return false };
+    let Some(seg) = p.path.segments.last() else {
+        return false;
+    };
     matches!(
         seg.ident.to_string().as_str(),
         "FixedUtf8NullPadded"
             | "FixedUtf8SpacePadded"
-            |
-        "FixedUtf16BeNullPadded"
+            | "FixedUtf16BeNullPadded"
             | "FixedUtf16BeSpacePadded"
             | "FixedUtf16LeNullPadded"
             | "FixedUtf16LeSpacePadded"
@@ -247,7 +251,7 @@ fn parse_text_attr(attrs: &[Attribute]) -> Result<(TextEncoding, usize, TextPad)
                     return Err(Error::new(
                         lit.span(),
                         "invalid pad; expected \"null\" or \"space\"",
-                    ))
+                    ));
                 }
             });
             return Ok(());
@@ -260,9 +264,13 @@ fn parse_text_attr(attrs: &[Attribute]) -> Result<(TextEncoding, usize, TextPad)
     })?;
 
     let encoding = encoding.ok_or_else(|| {
-        Error::new(attr.span(), "text encoding missing; expected utf8, utf16, or utf32")
+        Error::new(
+            attr.span(),
+            "text encoding missing; expected utf8, utf16, or utf32",
+        )
     })?;
-    let units = units.ok_or_else(|| Error::new(attr.span(), "text units missing; expected units = N"))?;
+    let units =
+        units.ok_or_else(|| Error::new(attr.span(), "text units missing; expected units = N"))?;
     let pad = pad.unwrap_or(TextPad::Null);
 
     Ok((encoding, units, pad))
@@ -313,7 +321,8 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
 
     let wire_name = format_ident!("{}Wire", name);
     // If #[wire_derive(...)] is not present, don't emit a bare `#` token; emit nothing.
-    let wire_derive_struct_attr: proc_macro2::TokenStream = wire_derive.clone().unwrap_or_else(|| quote!());
+    let wire_derive_struct_attr: proc_macro2::TokenStream =
+        wire_derive.clone().unwrap_or_else(|| quote!());
     let wire_derive_union_attr: proc_macro2::TokenStream = wire_derive.unwrap_or_else(|| quote!());
 
     let mut wire_field_idents: Vec<syn::Ident> = Vec::new();
@@ -424,30 +433,26 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 Fields::Unit => quote!(;),
             };
 
-            let struct_def = match &data.fields {
+            match &data.fields {
                 Fields::Named(_) => quote! {
-					#wire_derive_struct_attr
+                    #wire_derive_struct_attr
                     #wire_repr
                     #[allow(non_camel_case_types)]
                     #vis struct #wire_name #generics #fields
                 },
                 Fields::Unnamed(_) => quote! {
-					#wire_derive_struct_attr
+                    #wire_derive_struct_attr
                     #wire_repr
                     #[allow(non_camel_case_types)]
                     #vis struct #wire_name #generics #fields ;
                 },
                 Fields::Unit => quote! {
-					#wire_derive_struct_attr
+                    #wire_derive_struct_attr
                     #wire_repr
                     #[allow(non_camel_case_types)]
                     #vis struct #wire_name #generics #fields
                 },
-            };
-
-            let wire = struct_def;
-
-            wire
+            }
         }
         Data::Enum(data) => {
             // Enum support: generate `EnumWire` as a tag + payload union.
@@ -585,7 +590,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
 
                             field_defs.push(quote!(pub #f_ident: #wire_ty));
                             reads.push(quote!(#f_ident: ::simple_endian::read_specific(reader)?));
-						let tmp = se_tmp_ident_for_field(f_ident);
+                            let tmp = se_tmp_ident_for_field(f_ident);
                             writes.push(quote! {
                                 // SAFETY: For packed wire types, payload fields might be unaligned.
                                 let #tmp = unsafe { ::core::ptr::addr_of!(payload.#f_ident).read_unaligned() };
@@ -593,8 +598,8 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                             });
                         }
 
-							payload_structs.push(quote! {
-							#wire_derive_struct_attr
+                        payload_structs.push(quote! {
+                            #wire_derive_struct_attr
                             #wire_repr
                             #[allow(non_camel_case_types)]
                             #vis struct #v_payload_struct #generics {
@@ -635,9 +640,9 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             }
 
             // Payload union: if there are no payload variants, use a zero-sized placeholder.
-			let payload_def = if any_payload {
+            let payload_def = if any_payload {
                 quote! {
-				#wire_derive_union_attr
+                #wire_derive_union_attr
                     #wire_repr
                     #[allow(non_snake_case)]
                     #vis union #payload_name #generics {
@@ -648,7 +653,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 }
             } else {
                 quote! {
-				#wire_derive_union_attr
+                #wire_derive_union_attr
                     #wire_repr
                     #vis union #payload_name #generics {
                         _unused: [u8; 0],
@@ -661,7 +666,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
 
                 #payload_def
 
-    			#wire_derive_struct_attr
+                #wire_derive_struct_attr
                 #wire_repr
                 #[allow(non_camel_case_types)]
                 #vis struct #wire_name #generics {
@@ -730,7 +735,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             }
 
             quote! {
-				#wire_derive_union_attr
+                #wire_derive_union_attr
                 #wire_repr
                 #[allow(non_camel_case_types)]
                 #vis union #wire_name #generics {
@@ -752,7 +757,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
         // impls usable for packed wire types, we copy each field out using `read_unaligned`, then
         // write that by reference.
         let writes = wire_field_idents.iter().map(|f| {
-			let tmp = se_tmp_ident_for_field(f);
+            let tmp = se_tmp_ident_for_field(f);
             quote! {
                 // SAFETY: For packed wire types, fields might be unaligned, so we must load them
                 // via `read_unaligned` into a temporary.
@@ -819,9 +824,12 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
     // - `TryFrom<Wire> for Logical` can fail for text fields (invalid encoding), so we model that explicitly.
     let has_any_text = logical_is_text.iter().any(|&b| b);
     // Conversions are only generated for structs (named or tuple). Enums already have bespoke wire layout.
-    let struct_conversions = if matches!(&input.data, Data::Struct(_)) && (!wire_field_idents.is_empty() || !wire_field_indices.is_empty()) && !is_union {
-    // From<Logical> for Wire: only generate if there are no #[text] fields.
-    let from_logical_for_wire = if !has_any_text {
+    let struct_conversions = if matches!(&input.data, Data::Struct(_))
+        && (!wire_field_idents.is_empty() || !wire_field_indices.is_empty())
+        && !is_union
+    {
+        // From<Logical> for Wire: only generate if there are no #[text] fields.
+        let from_logical_for_wire = if !has_any_text {
             let assigns = logical_field_idents
                 .iter()
                 .zip(logical_field_types.iter())
@@ -874,7 +882,6 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             .zip(logical_field_types.iter())
             .zip(logical_is_text.iter())
             .map(|((f, ty), is_text)| {
-
                 // Note: If the generated wire type uses #[repr(packed)], then `v.#f` may be
                 // unaligned. Avoid taking references to packed fields by copying out via
                 // `read_unaligned()` first.
@@ -961,21 +968,19 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                     }
                 }
             }
-        } else {
-            if !wire_field_idents.is_empty() {
-                quote! {
-                    impl #impl_generics ::core::convert::From<#wire_name #ty_generics> for #name #ty_generics #where_clause {
-                        fn from(v: #wire_name #ty_generics) -> Self {
-                            Self { #(#try_assigns,)* }
-                        }
+        } else if !wire_field_idents.is_empty() {
+            quote! {
+                impl #impl_generics ::core::convert::From<#wire_name #ty_generics> for #name #ty_generics #where_clause {
+                    fn from(v: #wire_name #ty_generics) -> Self {
+                        Self { #(#try_assigns,)* }
                     }
                 }
-            } else {
-                quote! {
-                    impl #impl_generics ::core::convert::From<#wire_name #ty_generics> for #name #ty_generics #where_clause {
-                        fn from(v: #wire_name #ty_generics) -> Self {
-                            Self( #(#tuple_try_assigns,)* )
-                        }
+            }
+        } else {
+            quote! {
+                impl #impl_generics ::core::convert::From<#wire_name #ty_generics> for #name #ty_generics #where_clause {
+                    fn from(v: #wire_name #ty_generics) -> Self {
+                        Self( #(#tuple_try_assigns,)* )
                     }
                 }
             }
@@ -1004,7 +1009,10 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
     };
 
     if __se_debug_dump {
-        eprintln!("[simple_endian_derive] expanded for {}:\n{}\n", name, expanded);
+        eprintln!(
+            "[simple_endian_derive] expanded for {}:\n{}\n",
+            name, expanded
+        );
     }
 
     Ok(expanded.into())

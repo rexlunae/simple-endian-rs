@@ -230,7 +230,12 @@ impl SpecificEndianOwned for Utf32StringBE {
     }
 
     fn to_little_endian(&self) -> Self::Little {
-        Utf32StringLE(self.0.iter().map(|x| LittleEndian::from(x.to_native())).collect())
+        Utf32StringLE(
+            self.0
+                .iter()
+                .map(|x| LittleEndian::from(x.to_native()))
+                .collect(),
+        )
     }
 
     fn from_big_endian(&self) -> Self::Big {
@@ -247,7 +252,12 @@ impl SpecificEndianOwned for Utf32StringLE {
     type Little = Utf32StringLE;
 
     fn to_big_endian(&self) -> Self::Big {
-        Utf32StringBE(self.0.iter().map(|x| BigEndian::from(x.to_native())).collect())
+        Utf32StringBE(
+            self.0
+                .iter()
+                .map(|x| BigEndian::from(x.to_native()))
+                .collect(),
+        )
     }
 
     fn to_little_endian(&self) -> Self::Little {

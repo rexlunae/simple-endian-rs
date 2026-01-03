@@ -1,6 +1,11 @@
-#![cfg(all(feature = "derive", feature = "text_fixed", feature = "text_utf32", feature = "io"))]
+#![cfg(all(
+    feature = "derive",
+    feature = "text_fixed",
+    feature = "text_utf32",
+    feature = "io"
+))]
 
-use simple_endian::{read_specific, write_specific, Endianize, FixedUtf32BeSpacePadded};
+use simple_endian::{Endianize, FixedUtf32BeSpacePadded, read_specific, write_specific};
 
 #[test]
 fn endianize_text_padding_generates_fixed_utf32_types() {

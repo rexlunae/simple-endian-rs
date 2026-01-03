@@ -1,6 +1,6 @@
 #![cfg(all(feature = "derive", feature = "io-std"))]
 
-use simple_endian::{Endianize, EndianRead, EndianWrite, read_specific, write_specific};
+use simple_endian::{EndianRead, EndianWrite, Endianize, read_specific, write_specific};
 
 #[test]
 fn derived_enum_wire_round_trips_via_io() {

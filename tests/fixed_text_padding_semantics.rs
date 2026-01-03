@@ -1,7 +1,8 @@
 #![cfg(all(feature = "text_fixed", feature = "text_utf16", feature = "text_utf32"))]
 
 use simple_endian::{
-    FixedUtf16BeSpacePadded, FixedUtf16LeSpacePadded, FixedUtf32BeSpacePadded, FixedUtf32LeSpacePadded,
+    FixedUtf16BeSpacePadded, FixedUtf16LeSpacePadded, FixedUtf32BeSpacePadded,
+    FixedUtf32LeSpacePadded,
 };
 
 #[test]

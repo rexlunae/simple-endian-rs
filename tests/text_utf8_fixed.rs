@@ -29,7 +29,10 @@ fn utf8_space_padded_roundtrip() {
 #[test]
 fn utf8_too_many_bytes_errors() {
     let err = FixedUtf8NullPadded::<2>::try_from("abc").unwrap_err();
-    assert!(matches!(err, simple_endian::FixedUtf8Error::TooManyBytes { .. }));
+    assert!(matches!(
+        err,
+        simple_endian::FixedUtf8Error::TooManyBytes { .. }
+    ));
 }
 
 #[test]
@@ -44,7 +47,9 @@ fn utf8_invalid_utf8_errors_on_decode_null_padded() {
 fn utf8_invalid_utf8_errors_on_decode_space_padded() {
     // Use a single invalid byte followed by spaces; trim should remove only trailing spaces,
     // leaving the invalid byte to fail decoding.
-    let v = FixedUtf8SpacePadded::<4>::from(simple_endian::FixedUtf8Bytes::from([0xFF, b' ', b' ', b' ']));
+    let v = FixedUtf8SpacePadded::<4>::from(simple_endian::FixedUtf8Bytes::from([
+        0xFF, b' ', b' ', b' ',
+    ]));
     let err = String::try_from(&v).unwrap_err();
     assert_eq!(err, simple_endian::FixedUtf8Error::InvalidUtf8);
 }

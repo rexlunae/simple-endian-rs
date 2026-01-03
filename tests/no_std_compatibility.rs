@@ -43,10 +43,10 @@ fn test_no_std_conversions() {
     // Test that conversions work correctly
     let be: u32be = 0x12345678.into();
     let le: u32le = 0x12345678.into();
-    
+
     let be_val: u32 = be.into();
     let le_val: u32 = le.into();
-    
+
     assert_eq!(be_val, 0x12345678);
     assert_eq!(le_val, 0x12345678);
 }

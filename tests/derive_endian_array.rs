@@ -35,19 +35,16 @@ mod tests {
         write_specific(&mut buf, &w).unwrap();
 
         // Each u16 is written LE: 0x1122 -> [22 11], etc.
-        assert_eq!(
-            buf,
-            vec![0x22, 0x11, 0x44, 0x33, 0x66, 0x55, 0xAA, 0xBB]
-        );
+        assert_eq!(buf, vec![0x22, 0x11, 0x44, 0x33, 0x66, 0x55, 0xAA, 0xBB]);
 
-    let w2: ArrayStructWire = read_specific(&mut buf.as_slice()).unwrap();
-    assert_eq!(w2.words[0].to_native(), w.words[0].to_native());
-    assert_eq!(w2.words[1].to_native(), w.words[1].to_native());
-    assert_eq!(w2.words[2].to_native(), w.words[2].to_native());
-    assert_eq!(w2.tail, w.tail);
+        let w2: ArrayStructWire = read_specific(&mut buf.as_slice()).unwrap();
+        assert_eq!(w2.words[0].to_native(), w.words[0].to_native());
+        assert_eq!(w2.words[1].to_native(), w.words[1].to_native());
+        assert_eq!(w2.words[2].to_native(), w.words[2].to_native());
+        assert_eq!(w2.tail, w.tail);
 
         // Also validate wire->logical conversion for arrays.
-    let logical = ArrayStruct::from(w2);
+        let logical = ArrayStruct::from(w2);
         assert_eq!(logical.words, [0x1122, 0x3344, 0x5566]);
         assert_eq!(logical.tail, [0xAA, 0xBB]);
 

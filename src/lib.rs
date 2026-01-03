@@ -3,10 +3,10 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 // Enable `alloc` types (Vec/String) for optional text helpers in this crate.
 #[cfg(any(
-	feature = "text_utf8",
-	feature = "text_utf16",
-	feature = "text_utf32",
-	feature = "text_fixed"
+    feature = "text_utf8",
+    feature = "text_utf16",
+    feature = "text_utf32",
+    feature = "text_fixed"
 ))]
 extern crate alloc;
 
@@ -131,18 +131,18 @@ pub use simple_endian::SimpleEndian;
 
 /// Text/code-unit conversion helpers (UTF-8/UTF-16/UTF-32 and fixed-size strings), behind feature flags.
 #[cfg(any(
-	feature = "text_utf8",
-	feature = "text_utf16",
-	feature = "text_utf32",
-	feature = "text_fixed"
+    feature = "text_utf8",
+    feature = "text_utf16",
+    feature = "text_utf32",
+    feature = "text_fixed"
 ))]
 mod text_ops;
 
 #[cfg(any(
-	feature = "text_utf8",
-	feature = "text_utf16",
-	feature = "text_utf32",
-	feature = "text_fixed"
+    feature = "text_utf8",
+    feature = "text_utf16",
+    feature = "text_utf32",
+    feature = "text_fixed"
 ))]
 pub use text_ops::*;
 
