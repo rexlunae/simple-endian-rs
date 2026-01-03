@@ -2,7 +2,25 @@
 
 This document outlines the process to migrate from `master` to `main` as the default branch.
 
-## Steps to Complete the Migration
+## Quick Start
+
+For automated migration, use the provided script:
+
+```bash
+./migrate-to-main.sh
+```
+
+This script will create the `main` branch from `master` and push it to GitHub. After running the script, follow the manual steps displayed to set `main` as the default branch in GitHub settings.
+
+Alternatively, use the GitHub Actions workflow:
+1. Go to Actions tab in the repository
+2. Select "Create Main Branch from Master" workflow
+3. Click "Run workflow"
+4. Follow the instructions displayed after the workflow completes
+
+## Manual Steps
+
+If you prefer to perform the migration manually, follow these steps:
 
 ### 1. Create the main branch from master
 
