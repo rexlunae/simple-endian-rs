@@ -22,6 +22,8 @@ Optional features expand this into a full wire-format toolkit:
 
 The crate is designed to be lightweight and supports `#![no_std]` (derive/IO/text are feature-gated).
 
+If you’re using LLM-powered tooling, there’s a concise, repository-specific usage guide in `LLMs.txt`.
+
 ## New Text Handling
 
 New in the `0.4` release is a set of feature-gated types and conversions for handling on-disk/on-wire Unicode encodings **other than UTF-8**.

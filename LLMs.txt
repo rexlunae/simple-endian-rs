@@ -1,0 +1,153 @@
+# simple_endian — LLM usage notes
+
+This file is meant for LLM-powered tooling (code assistants, agentic refactoring tools, doc bots) to quickly learn how to use this repository’s Rust crates correctly.
+
+## What this crate is
+
+`simple_endian` helps you **describe binary formats in Rust** (network protocols, file formats, on-disk/on-wire structs) with endianness made explicit in types.
+
+It provides:
+
+- Endian-aware wrappers: `BigEndian<T>`, `LittleEndian<T>`
+- Shorthand aliases like `u16be`, `u32le`, etc.
+- Safe endian-aware IO helpers: `read_specific` / `write_specific` (feature-gated)
+- A derive macro: `#[derive(Endianize)]` (feature-gated) that generates `*Wire` types.
+
+## Feature gates you must respect
+
+Most functionality is behind cargo features:
+
+- `derive`: enables `#[derive(Endianize)]` **and re-exports it** as `simple_endian::Endianize`
+- `io-std`: enables std IO traits and exports `read_specific` / `write_specific` for `std::io::{Read, Write}`
+- `io-core`: enables a core-IO-compatible API (no `std`)
+- `text_utf8`, `text_utf16`, `text_utf32`, `text_fixed`, `text_all`: fixed-size text field helpers
+
+When generating code, include the right feature flags in examples/tests so it compiles.
+
+## Core modeling pattern (recommended)
+
+Prefer “logical type” + generated “wire type”:
+
+- Logical types use native Rust primitives (`u16`, `u32`, `String`, etc.) and are used by application logic.
+- Wire types are generated `*Wire` types where fields become endian-stable (`BigEndian<T>`/`LittleEndian<T>` etc.).
+
+This keeps endian conversions explicit at boundaries.
+
+## IO pattern (preferred)
+
+Use the crate IO helpers whenever possible, rather than manual byte swapping:
+
+- Read a typed wire value:
+  - `let x: u32be = read_specific(reader)?;`
+- Write a typed wire value:
+  - `write_specific(writer, &x)?;`
+
+This is the preferred approach in examples in this repo.
+
+## The Endianize derive macro
+
+### Basic usage
+
+```rust
+use simple_endian::Endianize;
+
+#[derive(Endianize)]
+#[endian(be)]
+struct Header {
+    a: u32,
+    b: u16,
+}
+
+// Generates: HeaderWire { a: BigEndian<u32>, b: BigEndian<u16> }
+```
+
+- `#[endian(be)]` or `#[endian(le)]` is required on the container.
+
+### Fixed-size text fields
+
+On **named struct fields only**, you can generate fixed-size padded wire text fields:
+
+```rust
+#[derive(Endianize)]
+#[endian(le)]
+struct Msg {
+    #[text(utf16, units = 8, pad = "space")]
+    title: String,
+}
+```
+
+This affects the generated `MsgWire` field type (it becomes a fixed UTF wrapper type).
+
+### Enum support
+
+`Endianize` supports enums as a **tag + payload** wire type.
+
+Requirements:
+
+- The enum must declare `#[repr(u8|u16|u32|u64)]`.
+- Only unit variants and **named-field** variants are supported.
+- If any variant carries payload, all variants must have explicit discriminants.
+
+### Union support
+
+`Endianize` generates a `*Wire` union (fields become endian-wrapped), but **does not** generate IO impls for unions.
+
+### Wire layout control (padding/alignment): `#[wire_repr(...)]`
+
+By default generated wire types use `#[repr(C)]`, which may introduce padding.
+
+You can override the representation used on generated wire types:
+
+```rust
+#[derive(Endianize)]
+#[endian(be)]
+#[wire_repr(packed)]
+struct PackedHeader {
+    a: u8,
+    b: u32,
+    c: u16,
+}
+```
+
+Safety notes for LLMs:
+
+- `#[repr(packed)]` means fields may be unaligned.
+- Rust forbids taking references to packed fields (E0793).
+- The derive macro in this repo was updated to avoid taking references to packed fields in generated impls.
+- In user-written code, prefer IO routines and/or `read_unaligned` into temporaries rather than `&wire.field`.
+
+### Wire trait passthrough: `#[wire_derive(...)]`
+
+To put extra derives on generated `*Wire` containers:
+
+```rust
+#[derive(Endianize)]
+#[endian(le)]
+#[wire_derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Msg {
+    id: u16,
+    len: u32,
+}
+
+// MsgWire will derive those traits.
+```
+
+## Repo-specific conventions
+
+- Examples prefer `read_specific`/`write_specific` over manual endian conversions.
+- Tests frequently run with `cargo test --all-features`.
+- Keep new derive features fully feature-gated and ensure compilation both with and without `derive`.
+
+## Common pitfalls
+
+- Don’t assume `repr(C)` means “no padding”. It doesn’t.
+- Don’t take references to packed fields.
+- If you add new derive-generated code, ensure it compiles for packed wire types.
+
+## Where to look in this repo
+
+- Derive macro crate: `simple_endian_derive/`
+  - Entry: `simple_endian_derive/src/lib.rs`
+  - Implementation: `simple_endian_derive/src/endianize.rs`
+- IO: `src/io.rs`
+- Endian wrappers: `src/specific_endian.rs` and shorthand types in `src/shorthand_types.rs`
