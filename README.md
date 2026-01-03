@@ -24,6 +24,26 @@ The crate is designed to be lightweight and supports `#![no_std]` (derive/IO/tex
 
 If you’re using LLM-powered tooling, there’s a concise, repository-specific usage guide in `LLMs.txt`.
 
+
+## No-std Support
+
+`simple_endian` works in `no_std` environments. The library automatically switches to `no_std` mode when:
+* You're not running tests
+* The `io-std` or `io` features are not enabled
+
+To use `simple_endian` in a `no_std` project, disable default features and enable only what you need:
+
+```toml
+[dependencies]
+simple_endian = { version = "0.4", default-features = false, features = ["integer_impls", "both_endian", "byte_impls"] }
+```
+
+Common feature combinations for `no_std`:
+* **Minimal**: `integer_impls`, `both_endian`, `byte_impls` — basic endian types
+* **With derive**: add `derive` — for `#[derive(Endianize)]` support
+* **With core IO**: add `io-core` — for slice-based read/write helpers (no `std::io` dependency)
+
+The library compiles successfully for embedded targets like `thumbv7m-none-eabi`. See `tests/no_std_compatibility.rs` for examples.
 ## New Text Handling
 
 New in the `0.4` release is a set of feature-gated types and conversions for handling on-disk/on-wire Unicode encodings **other than UTF-8**.
