@@ -4,6 +4,33 @@ use syn::{
     parse_macro_input, spanned::Spanned, Attribute, Data, DeriveInput, Error, Fields, LitStr,
 };
 
+fn parse_wire_repr(attrs: &[Attribute]) -> Result<Option<proc_macro2::TokenStream>, Error> {
+    let mut out: Option<proc_macro2::TokenStream> = None;
+    for attr in attrs {
+        if !attr.path().is_ident("wire_repr") {
+            continue;
+        }
+        if out.is_some() {
+            return Err(Error::new(attr.span(), "duplicate #[wire_repr(...)] attribute"));
+        }
+
+        let meta = attr.meta.clone();
+        match meta {
+            syn::Meta::List(list) => {
+                let tokens = list.tokens;
+                out = Some(quote!(#[repr(#tokens)]));
+            }
+            _ => {
+                return Err(Error::new(
+                    attr.span(),
+                    "#[wire_repr(...)] must be a list, e.g. #[wire_repr(packed)]",
+                ));
+            }
+        }
+    }
+    Ok(out)
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Endian {
     Big,
@@ -211,6 +238,8 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
     let endian = parse_container_endian(&input.attrs)?;
     let wrapper_path = endian.wrapper_path_tokens();
 
+	let wire_repr = parse_wire_repr(&input.attrs)?.unwrap_or_else(|| quote!(#[repr(C)]));
+
     let name = &input.ident;
     let vis = &input.vis;
     let generics = &input.generics;
@@ -317,7 +346,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             };
 
             let wire = quote! {
-                #[repr(C)]
+                #wire_repr
                 #[allow(non_camel_case_types)]
                 #vis struct #wire_name #generics #fields
             };
@@ -460,11 +489,16 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
 
                             field_defs.push(quote!(pub #f_ident: #wire_ty));
                             reads.push(quote!(#f_ident: ::simple_endian::read_specific(reader)?));
-                            writes.push(quote!(::simple_endian::write_specific(writer, &payload.#f_ident)?;));
+                            let tmp = format_ident!("__se_tmp_{}", f_ident);
+                            writes.push(quote! {
+                                // SAFETY: For packed wire types, payload fields might be unaligned.
+                                let #tmp = unsafe { ::core::ptr::addr_of!(payload.#f_ident).read_unaligned() };
+                                ::simple_endian::write_specific(writer, &#tmp)?;
+                            });
                         }
 
                         payload_structs.push(quote! {
-                            #[repr(C)]
+                            #wire_repr
                             #[allow(non_camel_case_types)]
                             #vis struct #v_payload_struct #generics {
                                 #(#field_defs,)*
@@ -506,7 +540,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             // Payload union: if there are no payload variants, use a zero-sized placeholder.
             let payload_def = if any_payload {
                 quote! {
-                    #[repr(C)]
+                    #wire_repr
                     #[allow(non_snake_case)]
                     #vis union #payload_name #generics {
                         #(#payload_union_fields,)*
@@ -516,7 +550,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 }
             } else {
                 quote! {
-                    #[repr(C)]
+                    #wire_repr
                     #vis union #payload_name #generics {
                         _unused: [u8; 0],
                     }
@@ -528,7 +562,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
 
                 #payload_def
 
-                #[repr(C)]
+                #wire_repr
                 #[allow(non_camel_case_types)]
                 #vis struct #wire_name #generics {
                     pub tag: #tag_ty,
@@ -553,8 +587,10 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 #[cfg(feature = "io-std")]
                 impl #impl_generics ::simple_endian::EndianWrite for #wire_name #ty_generics #where_clause {
                     fn write_to<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
-                        ::simple_endian::write_specific(writer, &self.tag)?;
-                        let raw: #tag_int = self.tag.into();
+                        // SAFETY: If #[wire_repr(packed)] is used, `tag` may be unaligned.
+                        let __se_tmp_tag: #tag_ty = unsafe { ::core::ptr::addr_of!(self.tag).read_unaligned() };
+                        ::simple_endian::write_specific(writer, &__se_tmp_tag)?;
+                        let raw: #tag_int = __se_tmp_tag.into();
                         match raw {
                             #(#variant_arms_write,)*
                             _ => Err(::std::io::Error::new(
@@ -596,7 +632,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             }
 
             quote! {
-                #[repr(C)]
+                #wire_repr
                 #[allow(non_camel_case_types)]
                 #vis union #wire_name #generics {
                     #(#wire_fields,)*
@@ -608,11 +644,22 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
     // If we have named fields, we can generate IO impls by reading/writing each field in order.
     // (Tuple structs can be added later; named fields cover the main repr(C) wire-layout use-case.)
     let io_impls = if !wire_field_idents.is_empty() && !is_union {
-        let reads = wire_field_idents.iter().map(|f| {
-            quote!(#f: ::simple_endian::read_specific(reader)?)
-        });
+        let reads = wire_field_idents
+            .iter()
+            .map(|f| quote!(#f: ::simple_endian::read_specific(reader)?));
+
+        // Important: if the generated wire type is #[repr(packed)], then `&self.field` is an
+        // unaligned reference and is rejected by the compiler (E0793). To keep the generated IO
+        // impls usable for packed wire types, we copy each field out using `read_unaligned`, then
+        // write that by reference.
         let writes = wire_field_idents.iter().map(|f| {
-            quote!(::simple_endian::write_specific(writer, &self.#f)?;)
+            let tmp = format_ident!("__se_tmp_{}", f);
+            quote! {
+                // SAFETY: For packed wire types, fields might be unaligned, so we must load them
+                // via `read_unaligned` into a temporary.
+                let #tmp = unsafe { ::core::ptr::addr_of!(self.#f).read_unaligned() };
+                ::simple_endian::write_specific(writer, &#tmp)?;
+            }
         });
 
         quote! {
@@ -678,14 +725,32 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             .zip(logical_field_types.iter())
             .zip(logical_is_text.iter())
             .map(|((f, ty), is_text)| {
+
+                // Note: If the generated wire type uses #[repr(packed)], then `v.#f` may be
+                // unaligned. Avoid taking references to packed fields by copying out via
+                // `read_unaligned()` first.
+                let tmp = format_ident!("__se_tmp_{}", f);
                 if *is_text {
-                    quote!(#f: ::std::string::String::try_from(&v.#f).map_err(|e| ::simple_endian::FixedTextError::from(e))?)
+                    quote!(#f: {
+                        let #tmp = unsafe { ::core::ptr::addr_of!(v.#f).read_unaligned() };
+                        ::std::string::String::try_from(&#tmp)
+                            .map_err(|e| ::simple_endian::FixedTextError::from(e))?
+                    })
                 } else if is_u8_array_type(ty) {
-                    quote!(#f: v.#f)
+                    quote!(#f: {
+                        let #tmp = unsafe { ::core::ptr::addr_of!(v.#f).read_unaligned() };
+                        #tmp
+                    })
                 } else if array_elem_and_len(ty).is_some() {
-                    quote!(#f: v.#f.map(|x| x.to_native()))
+                    quote!(#f: {
+                        let #tmp = unsafe { ::core::ptr::addr_of!(v.#f).read_unaligned() };
+                        #tmp.map(|x| x.to_native())
+                    })
                 } else {
-                    quote!(#f: v.#f.to_native())
+                    quote!(#f: {
+                        let #tmp = unsafe { ::core::ptr::addr_of!(v.#f).read_unaligned() };
+                        #tmp.to_native()
+                    })
                 }
             });
 
