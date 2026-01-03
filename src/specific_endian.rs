@@ -64,11 +64,66 @@ impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D));
 impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E));
 impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F));
 impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G));
-impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H));
-impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I));
-impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I), (9, J));
-impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I), (9, J), (10, K));
-impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I), (9, J), (10, K), (11, L));
+impl_specific_endian_for_tuple!(
+    (0, A),
+    (1, B),
+    (2, C),
+    (3, D),
+    (4, E),
+    (5, F),
+    (6, G),
+    (7, H)
+);
+impl_specific_endian_for_tuple!(
+    (0, A),
+    (1, B),
+    (2, C),
+    (3, D),
+    (4, E),
+    (5, F),
+    (6, G),
+    (7, H),
+    (8, I)
+);
+impl_specific_endian_for_tuple!(
+    (0, A),
+    (1, B),
+    (2, C),
+    (3, D),
+    (4, E),
+    (5, F),
+    (6, G),
+    (7, H),
+    (8, I),
+    (9, J)
+);
+impl_specific_endian_for_tuple!(
+    (0, A),
+    (1, B),
+    (2, C),
+    (3, D),
+    (4, E),
+    (5, F),
+    (6, G),
+    (7, H),
+    (8, I),
+    (9, J),
+    (10, K)
+);
+impl_specific_endian_for_tuple!(
+    (0, A),
+    (1, B),
+    (2, C),
+    (3, D),
+    (4, E),
+    (5, F),
+    (6, G),
+    (7, H),
+    (8, I),
+    (9, J),
+    (10, K),
+    (11, L)
+);
 
 /// Endian conversion trait for **owned / non-Copy** types.
 ///
@@ -254,8 +309,8 @@ mod integer_impls {
 mod nonzero_impls {
     use super::*;
     use core::num::{
-        NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize,
-        NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize,
+        NonZeroI8, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI128, NonZeroIsize, NonZeroU8,
+        NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize,
     };
 
     /// Implement `SpecificEndian` for `core::num::NonZero*` integers by swapping the underlying integer.
@@ -539,7 +594,10 @@ mod tests {
         assert_eq!(SpecificEndian::from_little_endian(&v), v);
     }
 
-    #[cfg(all(feature = "simple_specific_endian_bridge", feature = "simple_byte_impls"))]
+    #[cfg(all(
+        feature = "simple_specific_endian_bridge",
+        feature = "simple_byte_impls"
+    ))]
     #[test]
     fn bridge_u8_is_noop() {
         fn assert_specific_endian<T: SpecificEndian<T>>() {}
@@ -552,7 +610,10 @@ mod tests {
         assert_eq!(SpecificEndian::from_little_endian(&v), v);
     }
 
-    #[cfg(all(feature = "simple_specific_endian_bridge", feature = "simple_byte_impls"))]
+    #[cfg(all(
+        feature = "simple_specific_endian_bridge",
+        feature = "simple_byte_impls"
+    ))]
     #[test]
     fn bridge_i8_is_noop() {
         fn assert_specific_endian<T: SpecificEndian<T>>() {}
@@ -565,7 +626,10 @@ mod tests {
         assert_eq!(SpecificEndian::from_little_endian(&v), v);
     }
 
-    #[cfg(all(feature = "simple_specific_endian_bridge", feature = "simple_char_impls"))]
+    #[cfg(all(
+        feature = "simple_specific_endian_bridge",
+        feature = "simple_char_impls"
+    ))]
     #[test]
     fn bridge_char_is_noop() {
         fn assert_specific_endian<T: SpecificEndian<T>>() {}

@@ -14,8 +14,8 @@ mod protocol;
 #[cfg(all(feature = "derive", feature = "io-std", feature = "text_all"))]
 mod real {
     use super::protocol::*;
-    use simple_endian::{read_specific, write_specific};
     use simple_endian::FixedUtf32BeSpacePadded;
+    use simple_endian::{read_specific, write_specific};
     use std::io::Write;
     use std::net::TcpStream;
 
@@ -24,7 +24,9 @@ mod real {
             .nth(1)
             .unwrap_or_else(|| "127.0.0.1:7777".to_string());
 
-        let user = std::env::args().nth(2).unwrap_or_else(|| "alice".to_string());
+        let user = std::env::args()
+            .nth(2)
+            .unwrap_or_else(|| "alice".to_string());
         let message = std::env::args()
             .nth(3)
             .unwrap_or_else(|| "hello from client".to_string());
@@ -70,11 +72,11 @@ mod real {
             return Err(format!("expected SERVER_MSG, got type {msg_type}").into());
         }
 
-    let payload: ServerMsgWire = read_specific(&mut stream)?;
+        let payload: ServerMsgWire = read_specific(&mut stream)?;
 
-    // Be explicit about the wire type we're decoding here.
-    // (The derive-generated field type is fixed UTF-32BE, 64 code units, space padded.)
-    let text = String::try_from(&payload.text as &FixedUtf32BeSpacePadded<64>)?;
+        // Be explicit about the wire type we're decoding here.
+        // (The derive-generated field type is fixed UTF-32BE, 64 code units, space padded.)
+        let text = String::try_from(&payload.text as &FixedUtf32BeSpacePadded<64>)?;
         println!("server: {text}");
 
         Ok(())

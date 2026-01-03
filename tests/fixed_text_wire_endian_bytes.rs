@@ -1,6 +1,11 @@
-#![cfg(all(feature = "io", feature = "text_fixed", feature = "text_utf16", feature = "text_utf32"))]
+#![cfg(all(
+    feature = "io",
+    feature = "text_fixed",
+    feature = "text_utf16",
+    feature = "text_utf32"
+))]
 
-use simple_endian::{write_specific, FixedUtf16BeSpacePadded, FixedUtf32BeSpacePadded};
+use simple_endian::{FixedUtf16BeSpacePadded, FixedUtf32BeSpacePadded, write_specific};
 
 // NOTE: These tests assert the crate's *on-wire* encoding as produced by
 // `FromSlice::write_to_extend` for the fixed text types.

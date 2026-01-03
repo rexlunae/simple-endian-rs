@@ -1,7 +1,7 @@
 use super::*;
 
 #[cfg(all(feature = "derive", feature = "io-std", feature = "text_all"))]
-use simple_endian::{read_specific, Endianize};
+use simple_endian::{Endianize, read_specific};
 
 // These are tiny helper wire structs used for reading/writing fixed regions of
 // the boot sector and directory entries.
@@ -105,11 +105,11 @@ pub fn run() {
     let img = build_toy_fat16_image();
     let mut cur = Cursor::new(img);
 
-// Read jump + OEM as raw bytes.
-let mut jump = [0u8; 3];
-let mut oem = [0u8; 8];
-cur.read_exact(&mut jump).unwrap();
-cur.read_exact(&mut oem).unwrap();
+    // Read jump + OEM as raw bytes.
+    let mut jump = [0u8; 3];
+    let mut oem = [0u8; 8];
+    cur.read_exact(&mut jump).unwrap();
+    cur.read_exact(&mut oem).unwrap();
 
     // Parse BPB as endianized struct.
     let bpb: BiosParameterBlockWire = read_specific(&mut cur).expect("read BPB");
@@ -155,15 +155,14 @@ cur.read_exact(&mut oem).unwrap();
     println!("Signature: {:#06X}", sig.to_native());
 
     // Compute root dir location for our toy image:
-    let root_dir_sectors =
-        ((root_entries * 32) as u64 + bytes_per_sector - 1) / bytes_per_sector;
+    let root_dir_sectors = ((root_entries * 32) as u64 + bytes_per_sector - 1) / bytes_per_sector;
     let root_dir_lba = reserved + fats * sectors_per_fat;
 
     // Seek to root directory and read entries, but only within the root-dir sector span.
-    cur.seek(SeekFrom::Start(root_dir_lba * bytes_per_sector)).unwrap();
+    cur.seek(SeekFrom::Start(root_dir_lba * bytes_per_sector))
+        .unwrap();
 
-    let max_entries_by_sectors =
-        (root_dir_sectors * bytes_per_sector) / (DIR_ENTRY_SIZE as u64);
+    let max_entries_by_sectors = (root_dir_sectors * bytes_per_sector) / (DIR_ENTRY_SIZE as u64);
     let max_entries = core::cmp::min(root_entries as u64, max_entries_by_sectors) as usize;
 
     for i in 0..max_entries {

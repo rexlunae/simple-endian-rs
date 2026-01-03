@@ -36,9 +36,7 @@ fn normal_naming_works_as_expected() {
     }
 
     // Generated type is HeaderWire (clean and clear)
-    let wire = HeaderWire {
-        id: 123u16.into(),
-    };
+    let wire = HeaderWire { id: 123u16.into() };
 
     assert_eq!(wire.id.to_native(), 123);
 }

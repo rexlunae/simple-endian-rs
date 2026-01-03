@@ -53,7 +53,10 @@ fn bridge_i8_noop() {
 }
 
 #[test]
-#[cfg(all(feature = "simple_specific_endian_bridge", feature = "simple_char_impls"))]
+#[cfg(all(
+    feature = "simple_specific_endian_bridge",
+    feature = "simple_char_impls"
+))]
 fn bridge_char_noop() {
     fn assert_specific_endian<T: SpecificEndian<T>>() {}
     assert_specific_endian::<char>();

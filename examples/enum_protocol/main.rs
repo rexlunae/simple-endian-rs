@@ -19,7 +19,7 @@
 
 #[cfg(all(feature = "derive", feature = "io-std", feature = "text_all"))]
 mod demo {
-    use simple_endian::{read_specific, write_specific, Endianize, FixedUtf16BeSpacePadded};
+    use simple_endian::{Endianize, FixedUtf16BeSpacePadded, read_specific, write_specific};
 
     /// A tiny frame header.
     ///
@@ -50,12 +50,17 @@ mod demo {
     #[repr(u16)]
     enum Command {
         Nop = 0,
-        Ping { nonce: u32 } = 1,
+        Ping {
+            nonce: u32,
+        } = 1,
         SetName {
             #[text(utf16, units = 12, pad = "space")]
             name: String,
         } = 2,
-        Add { a: u16, b: u16 } = 3,
+        Add {
+            a: u16,
+            b: u16,
+        } = 3,
     }
 
     /// A full frame: header + command.
@@ -81,8 +86,8 @@ mod demo {
         assert_eq!(hdr.magic.to_native(), 0x5345_4E44);
         assert_eq!(hdr.version.to_native(), 1);
 
-    let tag = cmd.tag.to_native();
-    println!("decoded tag: {tag}");
+        let tag = cmd.tag.to_native();
+        println!("decoded tag: {tag}");
 
         match tag {
             0 => println!("Nop"),
@@ -112,7 +117,10 @@ mod demo {
             _ => {
                 // Forward-compatible behavior: we don't know how to interpret the payload,
                 // but we can still use the header length to skip it.
-                println!("unknown tag {tag}; skipping {} payload bytes", hdr.len.to_native());
+                println!(
+                    "unknown tag {tag}; skipping {} payload bytes",
+                    hdr.len.to_native()
+                );
             }
         }
     }
@@ -183,13 +191,21 @@ mod demo {
                 Err(_) => {
                     // Tag is 16-bit BE on the wire.
                     let (tag, raw) = if payload.len() >= 2 {
-                        (u16::from_be_bytes([payload[0], payload[1]]), [payload[0], payload[1]])
+                        (
+                            u16::from_be_bytes([payload[0], payload[1]]),
+                            [payload[0], payload[1]],
+                        )
                     } else {
                         (0, [0, 0])
                     };
-                    println!("(unknown frame) tag raw bytes: {:02X} {:02X} (BE)", raw[0], raw[1]);
+                    println!(
+                        "(unknown frame) tag raw bytes: {:02X} {:02X} (BE)",
+                        raw[0], raw[1]
+                    );
                     let tag_if_le = u16::from_le_bytes(raw);
-                    println!("(contrast, WRONG for this protocol) same bytes as LE u16: {tag_if_le}");
+                    println!(
+                        "(contrast, WRONG for this protocol) same bytes as LE u16: {tag_if_le}"
+                    );
                     println!("decoded tag: {tag}");
                     println!("unknown tag {tag}; skipping {payload_len} payload bytes");
                 }

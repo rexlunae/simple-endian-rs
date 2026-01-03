@@ -9,7 +9,10 @@ extern crate alloc;
 use alloc::{string::String, vec::Vec};
 use core::fmt;
 
-use crate::{BigEndian, LittleEndian, SpecificEndian, SpecificEndianOwned, Utf16StrBE, Utf16StrLE, Utf16StringBE, Utf16StringLE};
+use crate::{
+    BigEndian, LittleEndian, SpecificEndian, SpecificEndianOwned, Utf16StrBE, Utf16StrLE,
+    Utf16StringBE, Utf16StringLE,
+};
 
 use super::FixedUtf16Error;
 
@@ -161,7 +164,7 @@ impl<const N: usize> TryFrom<&str> for FixedUtf16LeCodeUnits<N> {
                     return Err(FixedUtf16Error::WrongCodeUnitCount {
                         expected: N,
                         found: idx,
-                    })
+                    });
                 }
             }
         }
@@ -193,7 +196,7 @@ impl<const N: usize> TryFrom<&str> for FixedUtf16BeCodeUnits<N> {
                     return Err(FixedUtf16Error::WrongCodeUnitCount {
                         expected: N,
                         found: idx,
-                    })
+                    });
                 }
             }
         }
@@ -674,7 +677,7 @@ impl<const N: usize> SpecificEndianOwned for FixedUtf16LeCodeUnits<N> {
         for (dst, src) in units.iter_mut().zip(self.units.iter()) {
             *dst = BigEndian::from_bits(src.to_native());
         }
-    FixedUtf16CodeUnitsEndian { units }
+        FixedUtf16CodeUnitsEndian { units }
     }
 
     fn to_little_endian(&self) -> Self::Little {
@@ -703,7 +706,7 @@ impl<const N: usize> SpecificEndianOwned for FixedUtf16BeCodeUnits<N> {
         for (dst, src) in units.iter_mut().zip(self.units.iter()) {
             *dst = LittleEndian::from_bits(src.to_native());
         }
-    FixedUtf16CodeUnitsEndian { units }
+        FixedUtf16CodeUnitsEndian { units }
     }
 
     fn from_big_endian(&self) -> Self::Big {

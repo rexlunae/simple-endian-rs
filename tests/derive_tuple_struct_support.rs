@@ -1,6 +1,6 @@
 #![cfg(all(feature = "derive", feature = "io", feature = "io-std"))]
 
-use simple_endian::{read_specific, write_specific, EndianRead, EndianWrite, Endianize};
+use simple_endian::{EndianRead, EndianWrite, Endianize, read_specific, write_specific};
 
 #[derive(Endianize, Clone, Copy, Debug, PartialEq, Eq)]
 #[endian(be)]

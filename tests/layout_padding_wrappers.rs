@@ -1,7 +1,7 @@
 #[cfg(feature = "integer_impls")]
 mod tests {
-    use simple_endian::{BigEndian, LittleEndian};
     use core::mem::{align_of, size_of};
+    use simple_endian::{BigEndian, LittleEndian};
 
     #[repr(C)]
     struct C1 {

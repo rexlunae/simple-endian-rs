@@ -1,4 +1,4 @@
-use bencher::{benchmark_group, benchmark_main, black_box, Bencher};
+use bencher::{Bencher, benchmark_group, benchmark_main, black_box};
 
 use simple_endian::{BigEndian, LittleEndian};
 
@@ -408,7 +408,9 @@ fn io_write_struct_u8_array(b: &mut Bencher) {
 
     #[cfg(feature = "derive")]
     {
-        let v = BlobWire { bytes: [0xA5u8; 64] };
+        let v = BlobWire {
+            bytes: [0xA5u8; 64],
+        };
         b.iter(|| {
             let mut buf = Vec::with_capacity(64);
             write_specific(&mut buf, black_box(&v)).unwrap();
@@ -490,7 +492,11 @@ fn derive_from_wire_to_logical_numeric_only(b: &mut Bencher) {
 }
 
 fn derive_tryfrom_wire_to_logical_text(b: &mut Bencher) {
-    #[cfg(all(feature = "derive", feature = "text_all", feature = "simple_string_impls"))]
+    #[cfg(all(
+        feature = "derive",
+        feature = "text_all",
+        feature = "simple_string_impls"
+    ))]
     {
         #[derive(simple_endian::Endianize, Clone)]
         #[endian(le)]
@@ -510,7 +516,11 @@ fn derive_tryfrom_wire_to_logical_text(b: &mut Bencher) {
         });
     }
 
-    #[cfg(not(all(feature = "derive", feature = "text_all", feature = "simple_string_impls")))]
+    #[cfg(not(all(
+        feature = "derive",
+        feature = "text_all",
+        feature = "simple_string_impls"
+    )))]
     {
         b.iter(|| black_box(0usize));
     }

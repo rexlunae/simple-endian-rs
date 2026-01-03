@@ -5,7 +5,10 @@ extern crate alloc;
 use alloc::string::String;
 use core::fmt;
 
-use crate::{BigEndian, LittleEndian, SpecificEndian, SpecificEndianOwned, Utf32StrBE, Utf32StrLE, Utf32StringBE, Utf32StringLE};
+use crate::{
+    BigEndian, LittleEndian, SpecificEndian, SpecificEndianOwned, Utf32StrBE, Utf32StrLE,
+    Utf32StringBE, Utf32StringLE,
+};
 
 /// Errors for fixed UTF-32 code-unit storage.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -173,7 +176,7 @@ impl<const N: usize> TryFrom<&str> for FixedUtf32LeCodeUnits<N> {
                     return Err(FixedUtf32Error::WrongCodeUnitCount {
                         expected: N,
                         found: idx,
-                    })
+                    });
                 }
             }
         }
@@ -203,7 +206,7 @@ impl<const N: usize> TryFrom<&str> for FixedUtf32BeCodeUnits<N> {
                     return Err(FixedUtf32Error::WrongCodeUnitCount {
                         expected: N,
                         found: idx,
-                    })
+                    });
                 }
             }
         }
@@ -578,7 +581,8 @@ impl<const N: usize> TryFrom<&FixedUtf32LeNullPadded<N>> for String {
                 break;
             }
         }
-        String::try_from(Utf32StrLE::from(&v.0.as_units()[..end])).map_err(|_| FixedUtf32Error::InvalidUtf32)
+        String::try_from(Utf32StrLE::from(&v.0.as_units()[..end]))
+            .map_err(|_| FixedUtf32Error::InvalidUtf32)
     }
 }
 
@@ -593,7 +597,8 @@ impl<const N: usize> TryFrom<&FixedUtf32BeNullPadded<N>> for String {
                 break;
             }
         }
-        String::try_from(Utf32StrBE::from(&v.0.as_units()[..end])).map_err(|_| FixedUtf32Error::InvalidUtf32)
+        String::try_from(Utf32StrBE::from(&v.0.as_units()[..end]))
+            .map_err(|_| FixedUtf32Error::InvalidUtf32)
     }
 }
 
@@ -610,7 +615,8 @@ impl<const N: usize> TryFrom<&FixedUtf32LeSpacePadded<N>> for String {
                 break;
             }
         }
-        String::try_from(Utf32StrLE::from(&v.0.as_units()[..end])).map_err(|_| FixedUtf32Error::InvalidUtf32)
+        String::try_from(Utf32StrLE::from(&v.0.as_units()[..end]))
+            .map_err(|_| FixedUtf32Error::InvalidUtf32)
     }
 }
 
@@ -627,7 +633,8 @@ impl<const N: usize> TryFrom<&FixedUtf32BeSpacePadded<N>> for String {
                 break;
             }
         }
-        String::try_from(Utf32StrBE::from(&v.0.as_units()[..end])).map_err(|_| FixedUtf32Error::InvalidUtf32)
+        String::try_from(Utf32StrBE::from(&v.0.as_units()[..end]))
+            .map_err(|_| FixedUtf32Error::InvalidUtf32)
     }
 }
 
@@ -640,7 +647,7 @@ impl<const N: usize> SpecificEndianOwned for FixedUtf32LeCodeUnits<N> {
         for (dst, src) in units.iter_mut().zip(self.units.iter()) {
             *dst = BigEndian::from_bits(src.to_native());
         }
-    FixedUtf32CodeUnitsEndian { units }
+        FixedUtf32CodeUnitsEndian { units }
     }
 
     fn to_little_endian(&self) -> Self::Little {
@@ -669,7 +676,7 @@ impl<const N: usize> SpecificEndianOwned for FixedUtf32BeCodeUnits<N> {
         for (dst, src) in units.iter_mut().zip(self.units.iter()) {
             *dst = LittleEndian::from_bits(src.to_native());
         }
-    FixedUtf32CodeUnitsEndian { units }
+        FixedUtf32CodeUnitsEndian { units }
     }
 
     fn from_big_endian(&self) -> Self::Big {

@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run tests
+        run: cargo test --all-features
+
+  no-std:
+    name: No-std Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv7m-none-eabi
+      - name: Check no-std build (minimal features)
+        run: cargo check --target thumbv7m-none-eabi --no-default-features --features "integer_impls,both_endian,byte_impls"
+      - name: Check no-std build (with io-core)
+        run: cargo check --target thumbv7m-none-eabi --no-default-features --features "integer_impls,both_endian,byte_impls,io-core"
+      - name: Check no-std build (with derive)
+        run: cargo check --target thumbv7m-none-eabi --no-default-features --features "integer_impls,both_endian,byte_impls,derive"
+      - name: Run no-std compatibility test
+        run: cargo test --test no_std_compatibility --no-default-features --features "integer_impls,both_endian,byte_impls"
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Run clippy
+        run: cargo clippy --all-features
+
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Run rustfmt
+        run: cargo fmt --all -- --check

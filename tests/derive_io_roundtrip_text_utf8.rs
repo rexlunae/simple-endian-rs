@@ -1,6 +1,11 @@
-#![cfg(all(feature = "derive", feature = "io-std", feature = "text_fixed", feature = "text_utf8"))]
+#![cfg(all(
+    feature = "derive",
+    feature = "io-std",
+    feature = "text_fixed",
+    feature = "text_utf8"
+))]
 
-use simple_endian::{read_specific, write_specific, Endianize};
+use simple_endian::{Endianize, read_specific, write_specific};
 use std::io::Cursor;
 
 #[test]
