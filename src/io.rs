@@ -45,6 +45,102 @@ pub mod core_io {
         fn to_u128(self) -> u128 { self.to_bits() as u128 }
     }
 
+    // --- Tuple support ------------------------------------------------------
+    //
+    // Tuples are encoded as a *concatenation* of each element's bytes.
+    //
+    // This crate's core IO machinery for `BigEndian<T>` / `LittleEndian<T>` uses a
+    // u128-based intermediate representation, so for tuples we interpret that u128 as
+    // the raw bytes (big-endian or little-endian depending on the wrapper) packed
+    // into a u128.
+    //
+    // Encoding contract for a tuple `(A, B, ...)`:
+    // - `to_u128()` returns a u128 whose *big-endian byte representation* is the
+    //   concatenation of each element's big-endian bytes.
+    // - `from_u128()` reverses that process.
+    //
+    // With this convention, the existing `FromSlice for BigEndian<T>/LittleEndian<T>`
+    // implementations work for tuples too.
+
+    macro_rules! impl_endianrepr_for_tuple {
+        ( $( ($idx:tt, $T:ident) ),+ $(,)? ) => {
+            impl<$( $T ),+> EndianRepr for ( $( $T ),+ )
+            where
+                $( $T: EndianRepr + Copy ),+
+            {
+                fn from_u128(v: u128) -> Self {
+                    let bytes = v.to_be_bytes();
+                    let total = 0usize $( + size_of::<$T>() )+;
+                    if total > 16 {
+                        panic!("tuple EndianRepr total size exceeds 16 bytes");
+                    }
+                    // The compact value is right-aligned within the u128.
+                    let mut offset = 16usize - total;
+                    (
+                        $(
+                            {
+                                let n = size_of::<$T>();
+                                let chunk = &bytes[offset..offset + n];
+                                let part = match n {
+                                    1 => chunk[0] as u128,
+                                    2 => u16::from_be_bytes([chunk[0], chunk[1]]) as u128,
+                                    4 => u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]) as u128,
+                                    8 => u64::from_be_bytes([
+                                        chunk[0], chunk[1], chunk[2], chunk[3],
+                                        chunk[4], chunk[5], chunk[6], chunk[7],
+                                    ]) as u128,
+                                    16 => u128::from_be_bytes(chunk.try_into().unwrap()),
+                                    _ => panic!("unsupported size in tuple EndianRepr"),
+                                };
+                                offset += n;
+                                <$T as EndianRepr>::from_u128(part)
+                            }
+                        ),+
+                    )
+                }
+
+                fn to_u128(self) -> u128 {
+                    let mut bytes = [0u8; 16];
+                    let total = 0usize $( + size_of::<$T>() )+;
+                    if total > 16 {
+                        panic!("tuple EndianRepr total size exceeds 16 bytes");
+                    }
+                    // Right-align data within the u128 so `BigEndian<T>` reads/writes
+                    // can slice the last `size_of::<T>()` bytes.
+                    let mut offset = 16usize - total;
+                    $(
+                        {
+                            let n = size_of::<$T>();
+                            let part = self.$idx.to_u128();
+                            match n {
+                                1 => bytes[offset] = part as u8,
+                                2 => bytes[offset..offset + 2].copy_from_slice(&(part as u16).to_be_bytes()),
+                                4 => bytes[offset..offset + 4].copy_from_slice(&(part as u32).to_be_bytes()),
+                                8 => bytes[offset..offset + 8].copy_from_slice(&(part as u64).to_be_bytes()),
+                                16 => bytes[offset..offset + 16].copy_from_slice(&(part as u128).to_be_bytes()),
+                                _ => panic!("unsupported size in tuple EndianRepr"),
+                            }
+                            offset += n;
+                        }
+                    )+
+                    u128::from_be_bytes(bytes)
+                }
+            }
+        };
+    }
+
+    impl_endianrepr_for_tuple!((0, A), (1, B));
+    impl_endianrepr_for_tuple!((0, A), (1, B), (2, C));
+    impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D));
+    impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E));
+    impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F));
+    impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G));
+    impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H));
+    impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I));
+    impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I), (9, J));
+    impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I), (9, J), (10, K));
+    impl_endianrepr_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I), (9, J), (10, K), (11, L));
+
     // read_be_from_slice/read_le_from_slice removed: use `FromSlice` impls
     // and the convenience `read_from_slice` function below instead.
 
@@ -134,68 +230,27 @@ pub mod core_io {
                 return Err("insufficient data");
             }
             let buf = &data[..size_of::<T>()];
-            let v = match size_of::<T>() {
-                1 => T::from_u128(buf[0] as u128),
-                2 => {
-                    let mut a = [0u8; 2];
-                    a.copy_from_slice(buf);
-                    let x = u16::from_be_bytes(a);
-                    T::from_u128(x as u128)
-                }
-                4 => {
-                    let mut a = [0u8; 4];
-                    a.copy_from_slice(buf);
-                    let x = u32::from_be_bytes(a);
-                    T::from_u128(x as u128)
-                }
-                8 => {
-                    let mut a = [0u8; 8];
-                    a.copy_from_slice(buf);
-                    let x = u64::from_be_bytes(a);
-                    T::from_u128(x as u128)
-                }
-                16 => {
-                    let mut a = [0u8; 16];
-                    a.copy_from_slice(buf);
-                    let x = u128::from_be_bytes(a);
-                    T::from_u128(x)
-                }
-                _ => return Err("unsupported size"),
-            };
+            // For composite types (like tuples), `EndianRepr` treats the u128 as a
+            // compact byte container and expects the bytes to be right-aligned.
+            let mut a = [0u8; 16];
+            a[16 - buf.len()..].copy_from_slice(buf);
+            let v = T::from_u128(u128::from_be_bytes(a));
             Ok(BigEndian::from(v))
         }
 
         fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
             // Write bytes in big-endian order for the logical value.
+            //
+            // For tuples, `to_u128()` acts as a byte container (right-aligned).
             let repr = self.to_native().to_u128();
-            match size_of::<T>() {
-                1 => {
-                    let b = repr as u8;
-                    out.extend(core::iter::IntoIterator::into_iter([b]));
-                    Ok(())
-                }
-                2 => {
-                    let x = repr as u16;
-                    out.extend(core::iter::IntoIterator::into_iter(x.to_be_bytes()));
-                    Ok(())
-                }
-                4 => {
-                    let x = repr as u32;
-                    out.extend(core::iter::IntoIterator::into_iter(x.to_be_bytes()));
-                    Ok(())
-                }
-                8 => {
-                    let x = repr as u64;
-                    out.extend(core::iter::IntoIterator::into_iter(x.to_be_bytes()));
-                    Ok(())
-                }
-                16 => {
-                    let x = repr as u128;
-                    out.extend(core::iter::IntoIterator::into_iter(x.to_be_bytes()));
-                    Ok(())
-                }
-                _ => Err("unsupported size"),
+            let bytes = repr.to_be_bytes();
+            let n = size_of::<T>();
+            if !(n == 1 || n == 2 || n == 4 || n == 8 || n == 16) {
+                return Err("unsupported size");
             }
+            // Emit the last `n` bytes (compact encoding).
+            out.extend(core::iter::IntoIterator::into_iter(bytes[16 - n..].iter().copied()));
+            Ok(())
         }
     }
 
@@ -208,67 +263,22 @@ pub mod core_io {
                 return Err("insufficient data");
             }
             let buf = &data[..size_of::<T>()];
-            let v = match size_of::<T>() {
-                1 => T::from_u128(buf[0] as u128),
-                2 => {
-                    let mut a = [0u8; 2];
-                    a.copy_from_slice(buf);
-                    let x = u16::from_le_bytes(a);
-                    T::from_u128(x as u128)
-                }
-                4 => {
-                    let mut a = [0u8; 4];
-                    a.copy_from_slice(buf);
-                    let x = u32::from_le_bytes(a);
-                    T::from_u128(x as u128)
-                }
-                8 => {
-                    let mut a = [0u8; 8];
-                    a.copy_from_slice(buf);
-                    let x = u64::from_le_bytes(a);
-                    T::from_u128(x as u128)
-                }
-                16 => {
-                    let mut a = [0u8; 16];
-                    a.copy_from_slice(buf);
-                    let x = u128::from_le_bytes(a);
-                    T::from_u128(x)
-                }
-                _ => return Err("unsupported size"),
-            };
+            // Composite types treat the u128 as a compact byte container.
+            let mut a = [0u8; 16];
+            a[..buf.len()].copy_from_slice(buf);
+            let v = T::from_u128(u128::from_le_bytes(a));
             Ok(LittleEndian::from(v))
         }
 
         fn write_to_extend(&self, out: &mut impl Extend<u8>) -> Result<(), &'static str> {
             let repr = self.to_native().to_u128();
-            match size_of::<T>() {
-                1 => {
-                    let b = repr as u8;
-                    out.extend(core::iter::IntoIterator::into_iter([b]));
-                    Ok(())
-                }
-                2 => {
-                    let x = repr as u16;
-                    out.extend(core::iter::IntoIterator::into_iter(x.to_le_bytes()));
-                    Ok(())
-                }
-                4 => {
-                    let x = repr as u32;
-                    out.extend(core::iter::IntoIterator::into_iter(x.to_le_bytes()));
-                    Ok(())
-                }
-                8 => {
-                    let x = repr as u64;
-                    out.extend(core::iter::IntoIterator::into_iter(x.to_le_bytes()));
-                    Ok(())
-                }
-                16 => {
-                    let x = repr as u128;
-                    out.extend(core::iter::IntoIterator::into_iter(x.to_le_bytes()));
-                    Ok(())
-                }
-                _ => Err("unsupported size"),
+            let bytes = repr.to_le_bytes();
+            let n = size_of::<T>();
+            if !(n == 1 || n == 2 || n == 4 || n == 8 || n == 16) {
+                return Err("unsupported size");
             }
+            out.extend(core::iter::IntoIterator::into_iter(bytes[..n].iter().copied()));
+            Ok(())
         }
     }
 
@@ -732,6 +742,14 @@ pub mod std_io {
             write_le::<W, T>(writer, self)
         }
     }
+
+    // Tuple support lives at the `SpecificEndian` layer.
+    //
+    // Note: We intentionally do *not* provide specialized std-IO impls for
+    // `BigEndian<(..)>` / `LittleEndian<(..)>` here because the blanket impls
+    // above (`impl<T> EndianRead/EndianWrite for BigEndian<T>`) already cover
+    // tuples once they implement `core_io::EndianRepr`. Adding explicit tuple
+    // impls causes trait coherence conflicts (E0119).
 
 
     impl<const N: usize> EndianRead for [u8; N] {

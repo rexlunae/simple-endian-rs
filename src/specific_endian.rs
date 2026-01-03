@@ -25,6 +25,51 @@ where
     }
 }
 
+// --- Tuple support ----------------------------------------------------------
+//
+// These impls enable `BigEndian<(A, B, ..)>` and `LittleEndian<(A, B, ..)>` by
+// making tuples implement `SpecificEndian<(..)>` when each element does.
+//
+// We choose an explicit maximum arity (12) to avoid needing variadic generics.
+
+macro_rules! impl_specific_endian_for_tuple {
+    // $idx is the tuple index (0, 1, ...), $T is the type parameter name.
+    ( $( ($idx:tt, $T:ident) ),+ $(,)? ) => {
+        impl<$( $T ),+> SpecificEndian<( $( $T ),+ )> for ( $( $T ),+ )
+        where
+            $( $T: SpecificEndian<$T> + Copy + Clone ),+
+        {
+            fn to_big_endian(&self) -> ( $( $T ),+ ) {
+                ( $( self.$idx.to_big_endian() ),+ )
+            }
+
+            fn to_little_endian(&self) -> ( $( $T ),+ ) {
+                ( $( self.$idx.to_little_endian() ),+ )
+            }
+
+            fn from_big_endian(&self) -> ( $( $T ),+ ) {
+                ( $( self.$idx.from_big_endian() ),+ )
+            }
+
+            fn from_little_endian(&self) -> ( $( $T ),+ ) {
+                ( $( self.$idx.from_little_endian() ),+ )
+            }
+        }
+    };
+}
+
+impl_specific_endian_for_tuple!((0, A), (1, B));
+impl_specific_endian_for_tuple!((0, A), (1, B), (2, C));
+impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D));
+impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E));
+impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F));
+impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G));
+impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H));
+impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I));
+impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I), (9, J));
+impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I), (9, J), (10, K));
+impl_specific_endian_for_tuple!((0, A), (1, B), (2, C), (3, D), (4, E), (5, F), (6, G), (7, H), (8, I), (9, J), (10, K), (11, L));
+
 /// Endian conversion trait for **owned / non-Copy** types.
 ///
 /// The existing [`SpecificEndian`] trait requires `Copy` because many of this crate's
