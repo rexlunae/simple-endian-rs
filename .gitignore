@@ -3,3 +3,5 @@
 Cargo.lock
 .test.bin
 simple_endian_derive/target/
+test_issues
+test_wire_io
