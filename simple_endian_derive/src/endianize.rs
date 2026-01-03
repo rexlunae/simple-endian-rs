@@ -618,7 +618,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                     pub payload: #payload_name #ty_generics,
                 }
 
-                #[cfg(feature = "io-std")]
+                #[cfg(all(feature = "io-std", feature = "io"))]
                 impl #impl_generics ::simple_endian::EndianRead for #wire_name #ty_generics #where_clause {
                     fn read_from<R: ::std::io::Read>(reader: &mut R) -> ::std::io::Result<Self> {
                         let tag: #tag_ty = ::simple_endian::read_specific(reader)?;
@@ -633,7 +633,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                     }
                 }
 
-                #[cfg(feature = "io-std")]
+                #[cfg(all(feature = "io-std", feature = "io"))]
                 impl #impl_generics ::simple_endian::EndianWrite for #wire_name #ty_generics #where_clause {
                     fn write_to<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
                         // SAFETY: If #[wire_repr(packed)] is used, `tag` may be unaligned.
@@ -713,14 +713,14 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
         });
 
         quote! {
-            #[cfg(feature = "io-std")]
+            #[cfg(all(feature = "io-std", feature = "io"))]
             impl #impl_generics ::simple_endian::EndianRead for #wire_name #ty_generics #where_clause {
                 fn read_from<R: ::std::io::Read>(reader: &mut R) -> ::std::io::Result<Self> {
                     Ok(Self { #(#reads,)* })
                 }
             }
 
-            #[cfg(feature = "io-std")]
+            #[cfg(all(feature = "io-std", feature = "io"))]
             impl #impl_generics ::simple_endian::EndianWrite for #wire_name #ty_generics #where_clause {
                 fn write_to<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
                     #(#writes)*
