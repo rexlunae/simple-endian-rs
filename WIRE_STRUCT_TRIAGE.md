@@ -35,8 +35,9 @@ let wire_name = format_ident!("{}Wire", name);
 
 All tests pass (as of 2026-01-03):
 - 57 unit tests in `src/lib.rs`
-- 56 integration tests across multiple test files (including the new edge case tests added in this triage)
-- 113 total tests passing
+- 53 existing integration tests
+- 3 new integration tests added in this triage (`tests/derive_wire_naming_edge_cases.rs`)
+- **Total: 113 tests, all passing**
 - Examples compile and run successfully
 
 Specific Wire-related tests:
