@@ -317,7 +317,10 @@ use simple_endian::Endianize;
 
 #[derive(Endianize)]
 #[endian(be)]
-#[repr(C)]
+// Optional: control the generated wire layout. Defaults to repr(C).
+// #[wire_repr(packed)]
+// Optional: pass additional derives through to the generated *Wire types.
+// #[wire_derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Header {
     a: u32,
     b: u16,
@@ -351,7 +354,50 @@ Notes:
 * Arrays:
   * Raw byte arrays like `[u8; 8]` are treated as already wire-safe and are passed through unchanged (endianness does not apply to bytes).
   * For other fixed-size arrays, endianness is applied **per element**. For example, under `#[endian(le)]`, a field `words: [u16; 3]` becomes `words: [LittleEndian<u16>; 3]` in the generated `*Wire` type.
-* `HeaderWire` is `#[repr(C)]` “on-wire” type that you can read/write as bytes (often via the IO helpers below).
+* `HeaderWire` is a `#[repr(C)]` “on-wire” type by default, that you can read/write as bytes (often via the IO helpers below).
+
+### Wire layout control: `#[wire_repr(...)]`
+
+By default, `Endianize` generates wire types using `#[repr(C)]`, which can introduce **padding** due to alignment.
+
+If you’re modeling a packed binary format, you can override the representation used for *generated* wire types:
+
+```rust
+use simple_endian::Endianize;
+
+#[derive(Endianize)]
+#[endian(be)]
+#[wire_repr(packed)]
+struct PackedHeader {
+  a: u8,
+  b: u32,
+  c: u16,
+}
+
+// PackedHeaderWire will be #[repr(packed)] and have no padding.
+```
+
+Safety note: `#[repr(packed)]` makes fields potentially **unaligned**. The generated code avoids taking references to packed fields (so it compiles safely), but you should still avoid taking references to packed fields in your own code. Prefer using the IO helpers (`read_specific`/`write_specific`) or copying values out.
+
+### Wire derive pass-through: `#[wire_derive(...)]`
+
+Sometimes you want the generated `*Wire` types to implement extra traits (for example `Debug`, `Copy`, or `PartialEq`).
+
+You can pass these through to the generated wire containers:
+
+```rust
+use simple_endian::Endianize;
+
+#[derive(Endianize)]
+#[endian(le)]
+#[wire_derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Msg {
+  id: u16,
+  len: u32,
+}
+
+// MsgWire derives Clone/Copy/Debug/PartialEq/Eq.
+```
 
 ### Enum support (tag + payload)
 

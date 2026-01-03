@@ -31,6 +31,36 @@ fn parse_wire_repr(attrs: &[Attribute]) -> Result<Option<proc_macro2::TokenStrea
     Ok(out)
 }
 
+fn parse_wire_derive(attrs: &[Attribute]) -> Result<Option<proc_macro2::TokenStream>, Error> {
+    let mut out: Option<proc_macro2::TokenStream> = None;
+    for attr in attrs {
+        if !attr.path().is_ident("wire_derive") {
+            continue;
+        }
+        if out.is_some() {
+            return Err(Error::new(
+                attr.span(),
+                "duplicate #[wire_derive(...)] attribute",
+            ));
+        }
+
+        let meta = attr.meta.clone();
+        match meta {
+            syn::Meta::List(list) => {
+                let tokens = list.tokens;
+                out = Some(quote!(#[derive(#tokens)]));
+            }
+            _ => {
+                return Err(Error::new(
+                    attr.span(),
+                    "#[wire_derive(...)] must be a list, e.g. #[wire_derive(Clone, Copy)]",
+                ));
+            }
+        }
+    }
+    Ok(out)
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Endian {
     Big,
@@ -239,6 +269,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
     let wrapper_path = endian.wrapper_path_tokens();
 
 	let wire_repr = parse_wire_repr(&input.attrs)?.unwrap_or_else(|| quote!(#[repr(C)]));
+	let wire_derive = parse_wire_derive(&input.attrs)?;
 
     let name = &input.ident;
     let vis = &input.vis;
@@ -346,6 +377,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             };
 
             let wire = quote! {
+				#wire_derive
                 #wire_repr
                 #[allow(non_camel_case_types)]
                 #vis struct #wire_name #generics #fields
@@ -498,6 +530,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                         }
 
                         payload_structs.push(quote! {
+                            #wire_derive
                             #wire_repr
                             #[allow(non_camel_case_types)]
                             #vis struct #v_payload_struct #generics {
@@ -540,6 +573,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             // Payload union: if there are no payload variants, use a zero-sized placeholder.
             let payload_def = if any_payload {
                 quote! {
+                    #wire_derive
                     #wire_repr
                     #[allow(non_snake_case)]
                     #vis union #payload_name #generics {
@@ -550,6 +584,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 }
             } else {
                 quote! {
+                    #wire_derive
                     #wire_repr
                     #vis union #payload_name #generics {
                         _unused: [u8; 0],
@@ -562,6 +597,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
 
                 #payload_def
 
+				#wire_derive
                 #wire_repr
                 #[allow(non_camel_case_types)]
                 #vis struct #wire_name #generics {
@@ -632,6 +668,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             }
 
             quote! {
+                #wire_derive
                 #wire_repr
                 #[allow(non_camel_case_types)]
                 #vis union #wire_name #generics {
