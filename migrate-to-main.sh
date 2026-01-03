@@ -2,7 +2,7 @@
 # Script to migrate from master to main branch
 # This script should be run by a repository maintainer with push access
 
-set -e
+set -euo pipefail
 
 echo "======================================================"
 echo "Branch Migration Script: master -> main"
@@ -68,8 +68,19 @@ echo "======================================================"
 echo "NEXT STEPS (Manual action required):"
 echo "======================================================"
 echo ""
-echo "1. Go to your GitHub repository Settings"
-echo "   URL: https://github.com/$(git remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/')/settings"
+
+# Try to extract repo URL for convenience
+REPO_URL=$(git remote get-url origin 2>/dev/null || echo "")
+if [[ -n "$REPO_URL" ]]; then
+    # Remove .git suffix if present
+    REPO_URL="${REPO_URL%.git}"
+    # Convert SSH to HTTPS format
+    REPO_URL="${REPO_URL/git@github.com:/https:\/\/github.com\/}"
+    echo "1. Go to your GitHub repository Settings"
+    echo "   URL: ${REPO_URL}/settings"
+else
+    echo "1. Go to your GitHub repository Settings page"
+fi
 echo ""
 echo "2. Click on 'Branches' in the left sidebar"
 echo ""
