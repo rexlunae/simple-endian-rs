@@ -64,6 +64,8 @@
 //! * `text_utf32` – enables UTF-32 helper types.
 //! * `text_fixed` – enables fixed-codepoint / fixed-code-unit, inline strings.
 //! * `text_all` – convenience feature enabling all of the above.
+//! * `text_encoding_rs` – enables optional `encoding_rs`-backed helpers for decoding/encoding
+//!   fixed-size byte fields using legacy encodings.
 
 #[cfg(feature = "text_utf8")]
 pub mod utf8;
@@ -76,6 +78,9 @@ mod utf32;
 
 #[cfg(feature = "text_fixed")]
 mod fixed;
+
+#[cfg(feature = "text_encoding_rs")]
+pub mod encoding_rs;
 
 // `utf8` is a public module; users can access it as `text_ops::utf8::*`.
 

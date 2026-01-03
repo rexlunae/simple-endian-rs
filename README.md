@@ -93,6 +93,22 @@ There are also fixed-size **UTF-8 byte** field wrappers:
 
 Note: the text APIs are entirely feature-gated. If you don't enable any `text_*` features, these types and conversions won't be part of your build.
 
+### Using `encoding_rs` (optional)
+
+If your wire format stores a fixed-size byte field that uses a non-UTF8 encoding (e.g. Windows-1252), enable the `text_encoding_rs` feature.
+
+This keeps the crate `no_std` by default; the helper functions return `String` and therefore require `alloc`.
+
+```rust
+use encoding_rs::WINDOWS_1252;
+use simple_endian::text_ops::encoding_rs::{decode_null_padded, encode_null_padded};
+use simple_endian::FixedUtf8NullPadded;
+
+let wire: FixedUtf8NullPadded<8> = encode_null_padded(WINDOWS_1252, "café").unwrap();
+let s = decode_null_padded(WINDOWS_1252, &wire).unwrap();
+assert_eq!(s, "café");
+```
+
 The important endianness point: **the endianness applies to the UTF code units**, not to the host.
 So `FixedUtf16Le...` is *always* little-endian on the wire, even on a big-endian CPU.
 
@@ -103,6 +119,7 @@ This mirrors formats like FAT long file names (UTF-16LE) or other metadata block
 ```rust
 use simple_endian::{Endianize, FixedUtf16LeSpacePadded};
 use simple_endian::{read_specific, write_specific};
+
 
 #[derive(Endianize, Debug)]
 #[endian(le)]

@@ -1,6 +1,6 @@
 [package]
 name = "simple_endian"
-version = "0.4.8"
+version = "0.4.9"
 authors = ["Erica Stith <rexlunae@gmail.com>"]
 edition = "2024"
 license = "MIT"
@@ -24,6 +24,7 @@ bencher = "0.1.5"
 
 [dependencies]
 simple_endian_derive = { version = "0.4.8", path = "./simple_endian_derive", optional = true }
+encoding_rs = { version = "0.8", default-features = false, optional = true }
 
 
 [features]
@@ -58,6 +59,7 @@ text_utf8 = []
 text_utf32 = []
 text_fixed = []
 text_all = ["text_utf8", "text_utf16", "text_utf32", "text_fixed"]
+text_encoding_rs = ["dep:encoding_rs"]
 io-core = []
 io-std = ["io-core"]
 io = ["io-std"]
