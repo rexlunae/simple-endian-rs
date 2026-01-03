@@ -47,6 +47,48 @@ Specific Wire-related tests:
 - `tests/derive_wire_naming_edge_cases.rs`: Edge cases for Wire naming convention (new)
 - Various repr and layout tests
 
+## Critical Issue Found
+
+### ⚠️ EndianRead/EndianWrite Not Generated for Wire Structs
+
+**Issue**: The derive macro attempts to generate `EndianRead` and `EndianWrite` implementations for Wire structs, but these implementations are gated behind `#[cfg(all(feature = "io-std", feature = "io"))]` checks that reference features in the **proc-macro crate** (`simple_endian_derive`). Since the proc-macro crate has no features defined, these cfg checks always fail, and the IO traits are NEVER generated.
+
+**Impact**: Users cannot use `read_specific`/`write_specific` with generated Wire structs, even when they enable `io` and `derive` features in their own crate.
+
+**Example of the Problem**:
+```rust
+use simple_endian::{Endianize, read_specific, write_specific};
+
+#[derive(Endianize)]
+#[endian(be)]
+#[repr(C, packed)]
+struct IhdrChunk {
+    width: u32,
+    height: u32,
+}
+
+fn main() {
+    let wire = IhdrChunkWire {
+        width: 100u32.into(),
+        height: 200u32.into(),
+    };
+    
+    // ERROR: IhdrChunkWire does not implement EndianWrite
+    write_specific(&mut buf, &wire).unwrap();
+}
+```
+
+**Root Cause**: Lines 767, 774, 799, 806 in `simple_endian_derive/src/endianize.rs` use:
+```rust
+#[cfg(all(feature = "io-std", feature = "io"))]
+```
+
+This checks features in the proc-macro crate at compile time, but `simple_endian_derive/Cargo.toml` has no features defined.
+
+**Status**: ❌ **CRITICAL BUG** - IO functionality is completely broken for generated Wire structs
+
+**Solution**: Remove the `#[cfg(...)]` gates from the generated implementations. The traits are already conditionally compiled in the main crate, so users who don't have IO features enabled won't see compile errors.
+
 ## Potential Issues and Edge Cases
 
 ### 1. Name Collision: Structs Already Ending in "Wire"

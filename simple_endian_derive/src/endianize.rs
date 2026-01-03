@@ -669,7 +669,6 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                     pub payload: #payload_name #ty_generics,
                 }
 
-                #[cfg(all(feature = "io-std", feature = "io"))]
                 impl #impl_generics ::simple_endian::EndianRead for #wire_name #ty_generics #where_clause {
                     fn read_from<R: ::std::io::Read>(reader: &mut R) -> ::std::io::Result<Self> {
                         let tag: #tag_ty = ::simple_endian::read_specific(reader)?;
@@ -684,7 +683,6 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                     }
                 }
 
-                #[cfg(all(feature = "io-std", feature = "io"))]
                 impl #impl_generics ::simple_endian::EndianWrite for #wire_name #ty_generics #where_clause {
                     fn write_to<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
                         // SAFETY: If #[wire_repr(packed)] is used, `tag` may be unaligned.
@@ -764,14 +762,12 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
         });
 
         quote! {
-            #[cfg(all(feature = "io-std", feature = "io"))]
             impl #impl_generics ::simple_endian::EndianRead for #wire_name #ty_generics #where_clause {
                 fn read_from<R: ::std::io::Read>(reader: &mut R) -> ::std::io::Result<Self> {
                     Ok(Self { #(#reads,)* })
                 }
             }
 
-            #[cfg(all(feature = "io-std", feature = "io"))]
             impl #impl_generics ::simple_endian::EndianWrite for #wire_name #ty_generics #where_clause {
                 fn write_to<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
                     #(#writes)*
@@ -796,14 +792,12 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
 
         // Tuple structs: same story, but with positional fields.
         quote! {
-            #[cfg(all(feature = "io-std", feature = "io"))]
             impl #impl_generics ::simple_endian::EndianRead for #wire_name #ty_generics #where_clause {
                 fn read_from<R: ::std::io::Read>(reader: &mut R) -> ::std::io::Result<Self> {
                     Ok(Self( #(#tuple_reads,)* ))
                 }
             }
 
-            #[cfg(all(feature = "io-std", feature = "io"))]
             impl #impl_generics ::simple_endian::EndianWrite for #wire_name #ty_generics #where_clause {
                 fn write_to<W: ::std::io::Write>(&self, writer: &mut W) -> ::std::io::Result<()> {
                     #(#tuple_writes)*
