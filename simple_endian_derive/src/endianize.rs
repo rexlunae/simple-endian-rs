@@ -4,6 +4,19 @@ use syn::{
     parse_macro_input, spanned::Spanned, Attribute, Data, DeriveInput, Error, Fields, LitStr,
 };
 
+fn se_tmp_ident_for_field(field: &syn::Ident) -> syn::Ident {
+    // Field names like `_reserved` would yield `__se_tmp__reserved` if we just
+    // format them directly. Strip leading underscores so the temp name stays
+    // snake_case and avoids `non_snake_case` warnings.
+    let raw = field.to_string();
+    let trimmed = raw.trim_start_matches('_');
+    if trimmed.is_empty() {
+        format_ident!("__se_tmp")
+    } else {
+        format_ident!("__se_tmp_{}", trimmed)
+    }
+}
+
 fn parse_wire_repr(attrs: &[Attribute]) -> Result<Option<proc_macro2::TokenStream>, Error> {
     let mut out: Option<proc_macro2::TokenStream> = None;
     for attr in attrs {
@@ -521,7 +534,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
 
                             field_defs.push(quote!(pub #f_ident: #wire_ty));
                             reads.push(quote!(#f_ident: ::simple_endian::read_specific(reader)?));
-                            let tmp = format_ident!("__se_tmp_{}", f_ident);
+						let tmp = se_tmp_ident_for_field(f_ident);
                             writes.push(quote! {
                                 // SAFETY: For packed wire types, payload fields might be unaligned.
                                 let #tmp = unsafe { ::core::ptr::addr_of!(payload.#f_ident).read_unaligned() };
@@ -690,7 +703,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
         // impls usable for packed wire types, we copy each field out using `read_unaligned`, then
         // write that by reference.
         let writes = wire_field_idents.iter().map(|f| {
-            let tmp = format_ident!("__se_tmp_{}", f);
+			let tmp = se_tmp_ident_for_field(f);
             quote! {
                 // SAFETY: For packed wire types, fields might be unaligned, so we must load them
                 // via `read_unaligned` into a temporary.
@@ -766,7 +779,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 // Note: If the generated wire type uses #[repr(packed)], then `v.#f` may be
                 // unaligned. Avoid taking references to packed fields by copying out via
                 // `read_unaligned()` first.
-                let tmp = format_ident!("__se_tmp_{}", f);
+                let tmp = se_tmp_ident_for_field(f);
                 if *is_text {
                     quote!(#f: {
                         let #tmp = unsafe { ::core::ptr::addr_of!(v.#f).read_unaligned() };
