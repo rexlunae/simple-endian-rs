@@ -1,0 +1,49 @@
+name: Create Main Branch from Master
+
+# This workflow creates the main branch from master
+# It should be run manually once to set up the main branch
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+permissions:
+  contents: write
+
+jobs:
+  create-main-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout master branch
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+          
+      - name: Create and push main branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Check if main branch already exists
+          if git ls-remote --heads origin main | grep main; then
+            echo "Main branch already exists"
+            exit 0
+          fi
+          
+          # Create main branch from current master
+          git checkout -b main
+          
+          # Push main branch
+          git push origin main
+          
+      - name: Instructions for next steps
+        run: |
+          echo "✅ Main branch created successfully!"
+          echo ""
+          echo "Next steps (must be done manually):"
+          echo "1. Go to Settings > Branches in the GitHub repository"
+          echo "2. Change the default branch from 'master' to 'main'"
+          echo "3. Update any branch protection rules"
+          echo "4. Update CI/CD configurations to reference 'main' if needed"
+          echo ""
+          echo "Note: Changing the default branch requires admin access and must be done through the GitHub web interface."
