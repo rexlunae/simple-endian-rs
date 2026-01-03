@@ -427,10 +427,37 @@ Enums are generated as a stable **tag + payload** wire type:
 
 * The enum must declare `#[repr(u8|u16|u32|u64)]` to select the tag width.
 * Unit variants and **named-field** variants like `Variant { a: T, b: U }` are supported.
-* Tuple variants are not supported yet.
+* Tuple variants like `Variant(T, U)` are supported.
 * If the enum has any data-carrying variants, then **all variants must have explicit discriminants** (e.g. `Ping = 1`, `Data { .. } = 2`).
 
 When the `io-std` feature is enabled, the generated `*Wire` enum container also gets `EndianRead`/`EndianWrite` impls.
+
+#### Fixed text in tuple variants: `#[tuple_text(...)]`
+
+Tuple fields don’t have identifiers, so the struct-field `#[text(...)]` attribute can’t be attached to them.
+For enum **tuple variants**, you can instead annotate the *variant* with `#[tuple_text(...)]`, selecting a field by index:
+
+```rust
+use simple_endian::Endianize;
+
+#[derive(Endianize)]
+#[endian(be)]
+#[repr(u8)]
+enum Msg {
+  // Field 0 is a fixed-size UTF-8 wire field.
+  #[tuple_text(idx = 0, utf8, units = 8, pad = "null")]
+  Name(String, u16) = 1,
+}
+
+// Generated (conceptually):
+// struct MsgWirePayload_Name(pub FixedUtf8NullPadded<8>, pub BigEndian<u16>);
+```
+
+Notes:
+
+* `idx = N` is 0-based.
+* You can specify multiple `#[tuple_text(...)]` attributes on the same variant (one per tuple index).
+* Supported encodings are `utf8`, `utf16`, `utf32`, with `pad = "null" | "space"`.
 
 ### Union support (safe default)
 

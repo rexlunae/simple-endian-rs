@@ -4,6 +4,114 @@ use syn::{
     Attribute, Data, DeriveInput, Error, Fields, LitStr, parse_macro_input, spanned::Spanned,
 };
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum TupleTextFieldKind {
+    Utf8,
+    Utf16,
+    Utf32,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct TupleTextSpec {
+    idx: usize,
+    kind: TupleTextFieldKind,
+    units: usize,
+    pad: TextPad,
+}
+
+fn parse_tuple_text_attr(attrs: &[Attribute]) -> Result<Vec<TupleTextSpec>, Error> {
+    // Supported on *enum variants* with Fields::Unnamed:
+    //
+    //   #[tuple_text(0: utf8, units = 8, pad = "null")]
+    //   #[tuple_text(1: utf16, units = 16, pad = "space")]
+    //
+    // Multiple tuple_text attributes are allowed on a single variant.
+    let mut out = Vec::new();
+    for attr in attrs {
+        if !attr.path().is_ident("tuple_text") {
+            continue;
+        }
+
+        let mut idx: Option<usize> = None;
+        let mut kind: Option<TupleTextFieldKind> = None;
+        let mut units: Option<usize> = None;
+        let mut pad: Option<TextPad> = None;
+
+        attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident("idx") {
+                let lit: syn::LitInt = meta.value()?.parse()?;
+                idx = Some(lit.base10_parse()?);
+                return Ok(());
+            }
+
+            if meta.path.is_ident("utf8") {
+                kind = Some(TupleTextFieldKind::Utf8);
+                return Ok(());
+            }
+            if meta.path.is_ident("utf16") {
+                kind = Some(TupleTextFieldKind::Utf16);
+                return Ok(());
+            }
+            if meta.path.is_ident("utf32") {
+                kind = Some(TupleTextFieldKind::Utf32);
+                return Ok(());
+            }
+
+            if meta.path.is_ident("units") {
+                let lit: syn::LitInt = meta.value()?.parse()?;
+                units = Some(lit.base10_parse()?);
+                return Ok(());
+            }
+
+            if meta.path.is_ident("pad") {
+                let lit: LitStr = meta.value()?.parse()?;
+                let s = lit.value();
+                pad = Some(match s.as_str() {
+                    "null" => TextPad::Null,
+                    "space" => TextPad::Space,
+                    _ => {
+                        return Err(Error::new(
+                            lit.span(),
+                            "invalid pad; expected \"null\" or \"space\"",
+                        ));
+                    }
+                });
+                return Ok(());
+            }
+
+            Err(Error::new(
+                meta.path.span(),
+                "unknown tuple_text argument; expected idx/utf8/utf16/utf32/units/pad",
+            ))
+        })?;
+
+        let idx = idx.ok_or_else(|| Error::new(attr.span(), "#[tuple_text(...)] missing `idx = N`"))?;
+        let kind = kind.ok_or_else(|| {
+            Error::new(
+                attr.span(),
+                "#[tuple_text(...)] missing encoding; expected one of: utf8 / utf16 / utf32",
+            )
+        })?;
+        let units = units.ok_or_else(|| Error::new(attr.span(), "#[tuple_text(...)] missing `units = N`"))?;
+        let pad = pad.ok_or_else(|| Error::new(attr.span(), "#[tuple_text(...)] missing `pad = \"null\"|\"space\"`"))?;
+
+        out.push(TupleTextSpec { idx, kind, units, pad });
+    }
+
+    // Reject duplicates.
+    out.sort_by_key(|s| s.idx);
+    for w in out.windows(2) {
+        if w[0].idx == w[1].idx {
+            return Err(Error::new(
+                proc_macro2::Span::call_site(),
+                format!("duplicate #[tuple_text] for tuple index {}", w[0].idx),
+            ));
+        }
+    }
+
+    Ok(out)
+}
+
 fn se_tmp_ident_for_field(field: &syn::Ident) -> syn::Ident {
     // Field names like `_reserved` would yield `__se_tmp__reserved` if we just
     // format them directly. Strip leading underscores so the temp name stays
@@ -459,7 +567,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             // Restrictions for v1:
             // - enum must have #[repr(u8|u16|u32|u64)]
             // - supported variants: unit variants and *named-field* variants
-            // - tuple variants are rejected for now
+            // - tuple variants are supported (generated as tuple payload structs)
             let tag_int = parse_enum_repr_int(&input.attrs)?;
             let tag_ty = quote!(#wrapper_path<#tag_int>);
 
@@ -630,11 +738,144 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                             }
                         });
                     }
-                    Fields::Unnamed(_) => {
-                        return Err(Error::new(
-                            v.span(),
-                            "Endianize enums: tuple variants are not supported yet; use named fields",
-                        ));
+                    Fields::Unnamed(fields) => {
+                        any_payload = true;
+
+                        let tuple_text_specs = parse_tuple_text_attr(&v.attrs)?;
+                        for spec in &tuple_text_specs {
+                            if spec.idx >= fields.unnamed.len() {
+                                return Err(Error::new(
+                                    v.span(),
+                                    format!(
+                                        "#[tuple_text] idx {} is out of bounds for variant {} (has {} fields)",
+                                        spec.idx,
+                                        v_ident,
+                                        fields.unnamed.len()
+                                    ),
+                                ));
+                            }
+                        }
+
+                        // Require an explicit discriminant for data-carrying variants.
+                        // Rust doesn't allow casting such variants to integers.
+                        let disc_expr = v
+                            .discriminant
+                            .as_ref()
+                            .ok_or_else(|| {
+                                Error::new(
+                                    v.span(),
+                                    "Endianize enums with payload require explicit discriminants, e.g. `Variant = 1`",
+                                )
+                            })?
+                            .1
+                            .clone();
+
+                        payload_structs.push(quote! {
+                            #[allow(non_upper_case_globals)]
+                            const #v_tag_const: #tag_int = (#disc_expr) as #tag_int;
+                        });
+
+                        let mut field_tys = Vec::with_capacity(fields.unnamed.len());
+                        let mut reads = Vec::with_capacity(fields.unnamed.len());
+                        let mut writes = Vec::with_capacity(fields.unnamed.len());
+
+                        for (idx, f) in fields.unnamed.iter().enumerate() {
+                            if has_text_attr(&f.attrs) {
+                                return Err(Error::new(
+                                    f.span(),
+                                    "#[text(...)] is only supported on named fields for now; for tuple variants use #[tuple_text(idx = N, ...)] on the variant",
+                                ));
+                            }
+
+                            let ty = &f.ty;
+
+                            let tuple_text = tuple_text_specs.iter().find(|s| s.idx == idx);
+
+                            let wire_ty = if let Some(spec) = tuple_text {
+                                let units_lit = syn::LitInt::new(&spec.units.to_string(), f.span());
+                                match (spec.kind, spec.pad, endian) {
+                                    (TupleTextFieldKind::Utf8, TextPad::Null, _) => {
+                                        quote!(::simple_endian::FixedUtf8NullPadded<#units_lit>)
+                                    }
+                                    (TupleTextFieldKind::Utf8, TextPad::Space, _) => {
+                                        quote!(::simple_endian::FixedUtf8SpacePadded<#units_lit>)
+                                    }
+                                    (TupleTextFieldKind::Utf16, TextPad::Null, Endian::Big) => {
+                                        quote!(::simple_endian::FixedUtf16BeNullPadded<#units_lit>)
+                                    }
+                                    (TupleTextFieldKind::Utf16, TextPad::Space, Endian::Big) => {
+                                        quote!(::simple_endian::FixedUtf16BeSpacePadded<#units_lit>)
+                                    }
+                                    (TupleTextFieldKind::Utf16, TextPad::Null, Endian::Little) => {
+                                        quote!(::simple_endian::FixedUtf16LeNullPadded<#units_lit>)
+                                    }
+                                    (TupleTextFieldKind::Utf16, TextPad::Space, Endian::Little) => {
+                                        quote!(::simple_endian::FixedUtf16LeSpacePadded<#units_lit>)
+                                    }
+                                    (TupleTextFieldKind::Utf32, TextPad::Null, Endian::Big) => {
+                                        quote!(::simple_endian::FixedUtf32BeNullPadded<#units_lit>)
+                                    }
+                                    (TupleTextFieldKind::Utf32, TextPad::Space, Endian::Big) => {
+                                        quote!(::simple_endian::FixedUtf32BeSpacePadded<#units_lit>)
+                                    }
+                                    (TupleTextFieldKind::Utf32, TextPad::Null, Endian::Little) => {
+                                        quote!(::simple_endian::FixedUtf32LeNullPadded<#units_lit>)
+                                    }
+                                    (TupleTextFieldKind::Utf32, TextPad::Space, Endian::Little) => {
+                                        quote!(::simple_endian::FixedUtf32LeSpacePadded<#units_lit>)
+                                    }
+                                }
+                            } else if is_fixed_text_wire_type(ty) {
+                                quote!(#ty)
+                            } else if is_u8_array_type(ty) {
+                                // Raw bytes are already wire-safe; endianness doesn't apply.
+                                quote!(#ty)
+                            } else if let Some((elem_ty, len_expr)) = array_elem_and_len(ty) {
+                                // For fixed-size arrays, apply the container endian to each element.
+                                quote!([#wrapper_path<#elem_ty>; #len_expr])
+                            } else {
+                                quote!(#wrapper_path<#ty>)
+                            };
+
+                            field_tys.push(wire_ty);
+                            reads.push(quote!(::simple_endian::read_specific(reader)?));
+
+                            let i = syn::Index::from(idx);
+                            let tmp = format_ident!("__se_tmp_{}", idx);
+                            writes.push(quote! {
+                                // SAFETY: For packed wire types, tuple fields might be unaligned.
+                                let #tmp = unsafe { ::core::ptr::addr_of!(payload.#i).read_unaligned() };
+                                ::simple_endian::write_specific(writer, &#tmp)?;
+                            });
+                        }
+
+                        payload_structs.push(quote! {
+                            #wire_derive_struct_attr
+                            #wire_repr
+                            #[allow(non_camel_case_types)]
+                            #vis struct #v_payload_struct #generics( #(pub #field_tys,)* );
+                        });
+
+                        payload_union_fields.push(quote!(#v_payload_union_field: ::std::mem::ManuallyDrop<#v_payload_struct #ty_generics>));
+
+                        variant_arms_read.push(quote! {
+                            x if x == #v_tag_const => {
+                                let payload = #v_payload_struct( #(#reads,)* );
+                                Ok(#wire_name {
+                                    tag: #v_tag_const.into(),
+                                    payload: #payload_name { #v_payload_union_field: ::std::mem::ManuallyDrop::new(payload) },
+                                })
+                            }
+                        });
+
+                        variant_arms_write.push(quote! {
+                            x if x == #v_tag_const => {
+                                // SAFETY: The active union field is selected by the tag.
+                                let payload = unsafe { &*self.payload.#v_payload_union_field };
+                                #(#writes)*
+                                Ok(())
+                            }
+                        });
                     }
                 }
             }

@@ -53,3 +53,37 @@ fn derived_enum_wire_round_trips_via_io() {
     fn _assert_traits<T: EndianRead + EndianWrite>() {}
     _assert_traits::<MsgWire>();
 }
+
+#[test]
+fn derived_enum_tuple_variant_round_trips_via_io() {
+    #[derive(Endianize, Debug, PartialEq)]
+    #[endian(be)]
+    #[repr(u8)]
+    #[allow(dead_code)]
+    enum Msg {
+        Ping = 1,
+        Data(u16, u32) = 2,
+    }
+
+    let data = MsgWire {
+        tag: 2u8.into(),
+        payload: MsgWirePayload {
+            Data: std::mem::ManuallyDrop::new(MsgWirePayload_Data(
+                0x1234u16.into(),
+                0xDEADBEEFu32.into(),
+            )),
+        },
+    };
+
+    let mut buf = Vec::new();
+    write_specific(&mut buf, &data).unwrap();
+
+    let mut cursor = std::io::Cursor::new(buf);
+    let data2: MsgWire = read_specific(&mut cursor).unwrap();
+    assert_eq!(data2.tag, data.tag);
+
+    // SAFETY: Tag chooses active union field.
+    let p2 = unsafe { &data2.payload.Data };
+    assert_eq!(p2.0, 0x1234u16.into());
+    assert_eq!(p2.1, 0xDEADBEEFu32.into());
+}
