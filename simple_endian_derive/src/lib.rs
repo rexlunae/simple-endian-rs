@@ -57,7 +57,18 @@ mod endianize;
 /// * `#[endian(be)]` for big-endian
 ///
 /// See the `simple_endian` crate documentation and README for examples and the recommended workflow.
-#[proc_macro_derive(Endianize, attributes(endian, text, tuple_text, wire_repr, wire_derive, default, wire_default))]
+#[proc_macro_derive(
+    Endianize,
+    attributes(
+        endian,
+        text,
+        tuple_text,
+        wire_repr,
+        wire_derive,
+        default,
+        wire_default
+    )
+)]
 pub fn derive_endianize(input: TokenStream) -> TokenStream {
     endianize::derive_endianize(input)
 }

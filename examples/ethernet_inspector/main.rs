@@ -546,7 +546,9 @@ mod demo {
                         let icmp: IcmpHeaderWire = match read_specific(&mut cur) {
                             Ok(v) => v,
                             Err(e) => {
-                                return format!("{summary} IPv6 ICMPv6 {src} -> {dst} <short: {e}>");
+                                return format!(
+                                    "{summary} IPv6 ICMPv6 {src} -> {dst} <short: {e}>"
+                                );
                             }
                         };
                         summary.push_str(&format!(

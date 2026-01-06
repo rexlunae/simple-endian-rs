@@ -86,17 +86,29 @@ fn parse_tuple_text_attr(attrs: &[Attribute]) -> Result<Vec<TupleTextSpec>, Erro
             ))
         })?;
 
-        let idx = idx.ok_or_else(|| Error::new(attr.span(), "#[tuple_text(...)] missing `idx = N`"))?;
+        let idx =
+            idx.ok_or_else(|| Error::new(attr.span(), "#[tuple_text(...)] missing `idx = N`"))?;
         let kind = kind.ok_or_else(|| {
             Error::new(
                 attr.span(),
                 "#[tuple_text(...)] missing encoding; expected one of: utf8 / utf16 / utf32",
             )
         })?;
-        let units = units.ok_or_else(|| Error::new(attr.span(), "#[tuple_text(...)] missing `units = N`"))?;
-        let pad = pad.ok_or_else(|| Error::new(attr.span(), "#[tuple_text(...)] missing `pad = \"null\"|\"space\"`"))?;
+        let units = units
+            .ok_or_else(|| Error::new(attr.span(), "#[tuple_text(...)] missing `units = N`"))?;
+        let pad = pad.ok_or_else(|| {
+            Error::new(
+                attr.span(),
+                "#[tuple_text(...)] missing `pad = \"null\"|\"space\"`",
+            )
+        })?;
 
-        out.push(TupleTextSpec { idx, kind, units, pad });
+        out.push(TupleTextSpec {
+            idx,
+            kind,
+            units,
+            pad,
+        });
     }
 
     // Reject duplicates.
@@ -172,8 +184,9 @@ fn parse_wire_derive_paths(attrs: &[Attribute]) -> Result<Option<Vec<syn::Path>>
         let meta = attr.meta.clone();
         match meta {
             syn::Meta::List(list) => {
-                let parsed = syn::punctuated::Punctuated::<syn::Path, syn::Token![,]>::parse_terminated
-                    .parse2(list.tokens)?;
+                let parsed =
+                    syn::punctuated::Punctuated::<syn::Path, syn::Token![,]>::parse_terminated
+                        .parse2(list.tokens)?;
                 out = Some(parsed.into_iter().collect());
             }
             _ => {
@@ -470,7 +483,11 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
         derive_attr_from_paths(&wire_derive_paths)
     };
     let wire_derive_union_attr: proc_macro2::TokenStream = {
-        let filtered: Vec<syn::Path> = wire_derive_paths.iter().cloned().filter(is_union_derive_allowed).collect();
+        let filtered: Vec<syn::Path> = wire_derive_paths
+            .iter()
+            .cloned()
+            .filter(is_union_derive_allowed)
+            .collect();
         derive_attr_from_paths(&filtered)
     };
 
