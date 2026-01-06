@@ -29,7 +29,7 @@
 //! * `#[endian(le)]` / `#[endian(be)]` (required)
 //! * `#[wire_repr(...)]` to control the generated wire layout (`#[repr(C)]`, `#[repr(C, packed)]`, etc.)
 //! * `#[wire_derive(...)]` to add derives to the generated wire type
-//! * `#[wire_default]` / `#[wire_default(...)]` to control wire `Default` generation
+//! * `#[wire_default]` to control wire `Default` generation
 //!
 //! Field-level:
 //!
