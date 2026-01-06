@@ -47,7 +47,7 @@ The recommended workflow in the `simple_endian` ecosystem is **native-first**:
 * `#[endian(le)]` / `#[endian(be)]` (required)
 * `#[wire_repr(...)]` – controls the generated wire type representation (e.g. `#[repr(C)]`, `#[repr(C, packed)]`)
 * `#[wire_derive(...)]` – derives to apply to the generated `*Wire` type
-* `#[wire_default]` / `#[wire_default(...)]` – controls `Default` generation for wire types
+* `#[wire_default]` – controls `Default` generation for wire types
 
 ### Field-level
 
