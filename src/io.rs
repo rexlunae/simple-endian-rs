@@ -969,6 +969,135 @@ pub mod std_io {
         write_specific::<dyn Write, E>(writer, v)
     }
 
+    /// Read a value in its *wire* representation and convert it into a native type.
+    ///
+    /// This is the recommended ergonomic pattern for `#[derive(Endianize)]` types:
+    ///
+    /// * the generated `*Wire` type is the IO/layout type (it implements [`EndianRead`])
+    /// * your “real” type is the native type used throughout your program
+    ///
+    /// Conceptually:
+    ///
+    /// 1. read `W` from the stream (endian-correct)
+    /// 2. convert into `T` using `From<W>`
+    ///
+    /// Under the hood, this is equivalent to:
+    ///
+    /// ```ignore
+    /// let wire: W = read_specific(reader)?;
+    /// let native: T = wire.into();
+    /// ```
+    ///
+    /// ### Example
+    ///
+    /// ```ignore
+    /// use simple_endian::Endianize;
+    /// use simple_endian::read_native;
+    ///
+    /// #[derive(Endianize)]
+    /// #[endian(le)]
+    /// #[repr(C)]
+    /// struct Header {
+    ///     magic: u32,
+    ///     version: u16,
+    /// }
+    ///
+    /// // Reads `HeaderWire` and converts to `Header`.
+    /// let header: Header = read_native::<_, HeaderWire, Header>(&mut reader)?;
+    /// # Ok::<(), std::io::Error>(())
+    /// ```
+    ///
+    /// ### Notes
+    ///
+    /// * This composes naturally for nested `Endianize` types (a `PacketWire` contains a `HeaderWire`).
+    /// * For enums, the wire representation is `tag + union payload`, so you typically want to keep
+    ///   trait derives on the native enum and only convert at the boundary.
+    pub fn read_native<R, W, T>(reader: &mut R) -> io::Result<T>
+    where
+        R: Read + ?Sized,
+        W: EndianRead,
+        T: From<W>,
+    {
+        let wire: W = read_specific(reader)?;
+        Ok(wire.into())
+    }
+
+    /// Like [`read_native`], but uses `TryFrom<W>` for fallible conversion.
+    ///
+    /// Conversion errors are mapped to `io::ErrorKind::InvalidData`.
+    pub fn try_read_native<R, W, T>(reader: &mut R) -> io::Result<T>
+    where
+        R: Read + ?Sized,
+        W: EndianRead,
+        T: TryFrom<W>,
+        <T as TryFrom<W>>::Error: core::fmt::Display,
+    {
+        let wire: W = read_specific(reader)?;
+        T::try_from(wire).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))
+    }
+
+    /// Convert a native value into its *wire* representation and write it.
+    ///
+    /// This is the “mirror” of [`read_native`]: convert first, then write.
+    ///
+    /// Under the hood this is equivalent to:
+    ///
+    /// ```ignore
+    /// let wire: W = value.into();
+    /// write_specific(writer, &wire)
+    /// ```
+    pub fn write_native<Wrt, W, T>(writer: &mut Wrt, v: T) -> io::Result<()>
+    where
+        Wrt: Write + ?Sized,
+        W: EndianWrite,
+        W: From<T>,
+    {
+        let wire: W = v.into();
+        write_specific(writer, &wire)
+    }
+
+    /// Convenience wrapper over [`write_native`] when you only have a reference.
+    ///
+    /// This clones the value and forwards to [`write_native`].
+    pub fn write_native_ref<Wrt, W, T>(writer: &mut Wrt, v: &T) -> io::Result<()>
+    where
+        Wrt: Write + ?Sized,
+        W: EndianWrite,
+        T: Clone,
+        W: From<T>,
+    {
+        write_native::<Wrt, W, T>(writer, v.clone())
+    }
+
+    /// Like [`write_native`], but uses `TryFrom<T>` for fallible conversion.
+    ///
+    /// Conversion errors are mapped to `io::ErrorKind::InvalidInput`.
+    pub fn try_write_native<Wrt, W, T>(writer: &mut Wrt, v: T) -> io::Result<()>
+    where
+        Wrt: Write + ?Sized,
+        W: EndianWrite,
+        W: TryFrom<T>,
+        <W as TryFrom<T>>::Error: core::fmt::Display,
+    {
+        let wire: W = W::try_from(v)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+        write_specific(writer, &wire)
+    }
+
+    /// Convenience wrapper over [`try_write_native`] when you only have a reference.
+    ///
+    /// This clones the value and forwards to [`try_write_native`].
+    pub fn try_write_native_ref<Wrt, W, T>(writer: &mut Wrt, v: &T) -> io::Result<()>
+    where
+        Wrt: Write + ?Sized,
+        W: EndianWrite,
+        T: Clone,
+        W: TryFrom<T>,
+        <W as TryFrom<T>>::Error: core::fmt::Display,
+    {
+        try_write_native::<Wrt, W, T>(writer, v.clone())
+    }
+
     // --- Fixed UTF helpers (feature-gated) ---
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]

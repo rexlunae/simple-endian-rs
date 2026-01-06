@@ -1,0 +1,40 @@
+use simple_endian::Endianize;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Endianize)]
+#[endian(le)]
+#[repr(C)]
+struct Native {
+    a: u16,
+    b: u32,
+}
+
+#[test]
+fn std_io_read_write_native_via_wire_from_into() {
+    // Write a wire value, then read it back as a native value via conversion.
+    let wire = NativeWire { a: 0x1122u16.into(), b: 0xAABBCCDDu32.into() };
+
+    let mut buf = Vec::new();
+    simple_endian::write_specific(&mut buf, &wire).unwrap();
+
+    let native: Native = simple_endian::read_native::<_, NativeWire, Native>(&mut &buf[..]).unwrap();
+    assert_eq!(native, Native { a: 0x1122, b: 0xAABBCCDD });
+
+    // Now write a native value (by value) and read back as wire.
+    let mut buf2 = Vec::new();
+    simple_endian::write_native::<_, NativeWire, Native>(&mut buf2, Native { a: 0x3344, b: 0x01020304 }).unwrap();
+
+    let wire2: NativeWire = simple_endian::read_specific(&mut &buf2[..]).unwrap();
+    assert_eq!(wire2.a, 0x3344u16.into());
+    assert_eq!(wire2.b, 0x01020304u32.into());
+}
+
+#[test]
+fn std_io_write_native_ref_roundtrip() {
+    let v = Native { a: 0xABCD, b: 0x0BAD_F00D };
+
+    let mut buf = Vec::new();
+    simple_endian::write_native_ref::<_, NativeWire, Native>(&mut buf, &v).unwrap();
+
+    let read_back: Native = simple_endian::read_native::<_, NativeWire, Native>(&mut &buf[..]).unwrap();
+    assert_eq!(read_back, v);
+}

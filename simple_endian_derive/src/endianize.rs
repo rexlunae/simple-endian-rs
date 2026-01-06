@@ -1,7 +1,8 @@
 use proc_macro::TokenStream;
 use quote::{ToTokens, format_ident, quote};
 use syn::{
-    Attribute, Data, DeriveInput, Error, Fields, LitStr, parse_macro_input, spanned::Spanned,
+    Attribute, Data, DeriveInput, Error, Fields, LitStr, parse::Parser, parse_macro_input,
+    spanned::Spanned,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -155,8 +156,8 @@ fn parse_wire_repr(attrs: &[Attribute]) -> Result<Option<proc_macro2::TokenStrea
     Ok(out)
 }
 
-fn parse_wire_derive(attrs: &[Attribute]) -> Result<Option<proc_macro2::TokenStream>, Error> {
-    let mut out: Option<proc_macro2::TokenStream> = None;
+fn parse_wire_derive_paths(attrs: &[Attribute]) -> Result<Option<Vec<syn::Path>>, Error> {
+    let mut out: Option<Vec<syn::Path>> = None;
     for attr in attrs {
         if !attr.path().is_ident("wire_derive") {
             continue;
@@ -171,8 +172,9 @@ fn parse_wire_derive(attrs: &[Attribute]) -> Result<Option<proc_macro2::TokenStr
         let meta = attr.meta.clone();
         match meta {
             syn::Meta::List(list) => {
-                let tokens = list.tokens;
-                out = Some(quote!(#[derive(#tokens)]));
+                let parsed = syn::punctuated::Punctuated::<syn::Path, syn::Token![,]>::parse_terminated
+                    .parse2(list.tokens)?;
+                out = Some(parsed.into_iter().collect());
             }
             _ => {
                 return Err(Error::new(
@@ -183,6 +185,39 @@ fn parse_wire_derive(attrs: &[Attribute]) -> Result<Option<proc_macro2::TokenStr
         }
     }
     Ok(out)
+}
+
+fn last_path_segment_ident(path: &syn::Path) -> Option<&syn::Ident> {
+    path.segments.last().map(|s| &s.ident)
+}
+
+fn is_union_derive_allowed(path: &syn::Path) -> bool {
+    // Rust has special restrictions for unions: even for allowed traits like `Copy`
+    // and `Clone`, the builtin `#[derive]` support is limited. In particular, many
+    // common derives (Debug/PartialEq/Eq/Hash/etc.) are rejected.
+    //
+    // We take a conservative stance: only pass through traits that are known to be
+    // accepted for unions on stable Rust.
+    let Some(ident) = last_path_segment_ident(path) else {
+        return false;
+    };
+    matches!(ident.to_string().as_str(), "Copy" | "Clone")
+}
+
+fn derive_attr_from_paths(paths: &[syn::Path]) -> proc_macro2::TokenStream {
+    if paths.is_empty() {
+        quote!()
+    } else {
+        quote!(#[derive(#(#paths),*)])
+    }
+}
+
+fn has_default_attr(attrs: &[Attribute]) -> bool {
+    attrs.iter().any(|a| a.path().is_ident("default"))
+}
+
+fn has_wire_default_attr(attrs: &[Attribute]) -> bool {
+    attrs.iter().any(|a| a.path().is_ident("wire_default"))
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -420,7 +455,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             quote!(#[repr(C)])
         }
     });
-    let wire_derive = parse_wire_derive(&input.attrs)?;
+    let wire_derive_paths = parse_wire_derive_paths(&input.attrs)?.unwrap_or_default();
 
     let name = &input.ident;
     let vis = &input.vis;
@@ -429,9 +464,15 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
 
     let wire_name = format_ident!("{}Wire", name);
     // If #[wire_derive(...)] is not present, don't emit a bare `#` token; emit nothing.
-    let wire_derive_struct_attr: proc_macro2::TokenStream =
-        wire_derive.clone().unwrap_or_else(|| quote!());
-    let wire_derive_union_attr: proc_macro2::TokenStream = wire_derive.unwrap_or_else(|| quote!());
+    let wire_derive_struct_attr: proc_macro2::TokenStream = if wire_derive_paths.is_empty() {
+        quote!()
+    } else {
+        derive_attr_from_paths(&wire_derive_paths)
+    };
+    let wire_derive_union_attr: proc_macro2::TokenStream = {
+        let filtered: Vec<syn::Path> = wire_derive_paths.iter().cloned().filter(is_union_derive_allowed).collect();
+        derive_attr_from_paths(&filtered)
+    };
 
     let mut wire_field_idents: Vec<syn::Ident> = Vec::new();
     let mut wire_field_indices: Vec<syn::Index> = Vec::new();
@@ -512,7 +553,13 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                             quote!(#wrapper_path<#ty>)
                         };
 
-                        wire_fields.push(quote!(pub #f_ident: #wire_ty));
+                        let maybe_default_attr = if has_default_attr(&f.attrs) {
+                            quote!(#[default])
+                        } else {
+                            quote!()
+                        };
+
+                        wire_fields.push(quote!(#maybe_default_attr pub #f_ident: #wire_ty));
                     }
 
                     quote!({
@@ -579,6 +626,8 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
             let mut variant_arms_read = Vec::<proc_macro2::TokenStream>::new();
             let mut variant_arms_write = Vec::<proc_macro2::TokenStream>::new();
 
+            let mut default_unit_tag_const: Option<syn::Ident> = None;
+
             for v in &data.variants {
                 let v_ident = &v.ident;
                 let v_payload_struct = format_ident!("{}WirePayload_{}", name, v_ident);
@@ -603,6 +652,16 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                             #[allow(non_upper_case_globals)]
                             const #v_tag_const: #tag_int = (#disc_expr) as #tag_int;
                         });
+
+                        if has_default_attr(&v.attrs) {
+                            if default_unit_tag_const.is_some() {
+                                return Err(Error::new(
+                                    v.span(),
+                                    "duplicate #[default] enum variant; only one default variant is allowed",
+                                ));
+                            }
+                            default_unit_tag_const = Some(v_tag_const.clone());
+                        }
                         variant_arms_read.push(quote! {
                             x if x == #v_tag_const => {
                                 Ok(#wire_name { tag: #v_tag_const.into(), payload: #payload_name { _unused: [] } })
@@ -902,6 +961,9 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 }
             };
 
+            let manual_eq_impls = quote!();
+            let manual_debug_impl = quote!();
+
             let wire = quote! {
                 #(#payload_structs)*
 
@@ -914,6 +976,9 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                     pub tag: #tag_ty,
                     pub payload: #payload_name #ty_generics,
                 }
+
+                #manual_eq_impls
+                #manual_debug_impl
 
                 impl #impl_generics ::simple_endian::EndianRead for #wire_name #ty_generics #where_clause {
                     fn read_from<R: ::std::io::Read + ?Sized>(reader: &mut R) -> ::std::io::Result<Self> {
@@ -944,6 +1009,29 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                         }
                     }
                 }
+            };
+
+            let needs_default_impl = has_wire_default_attr(&input.attrs);
+            let default_impl = if needs_default_impl {
+                if let Some(tag_const) = default_unit_tag_const {
+                    Some(quote! {
+                        impl #impl_generics ::core::default::Default for #wire_name #ty_generics #where_clause {
+                            fn default() -> Self {
+                                Self { tag: #tag_const.into(), payload: #payload_name { _unused: [] } }
+                            }
+                        }
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            let wire = if let Some(default_impl) = default_impl {
+                quote!(#wire #default_impl)
+            } else {
+                wire
             };
 
             wire
