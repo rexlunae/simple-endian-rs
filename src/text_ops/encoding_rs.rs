@@ -12,8 +12,8 @@
 
 extern crate alloc;
 
-use alloc::vec;
 use alloc::string::String;
+use alloc::vec;
 use core::fmt;
 
 use encoding_rs::Encoding;
@@ -68,7 +68,8 @@ pub fn decode_null_padded<const N: usize>(
     // Allocate enough UTF-8 bytes for the worst case. This keeps the API strict and simple.
     let mut out = vec![0u8; bytes.len().saturating_mul(3).saturating_add(16)];
     let mut decoder = encoding.new_decoder_without_bom_handling();
-    let (result, _read, written) = decoder.decode_to_utf8_without_replacement(bytes, &mut out, true);
+    let (result, _read, written) =
+        decoder.decode_to_utf8_without_replacement(bytes, &mut out, true);
 
     match result {
         DecoderResult::InputEmpty => {
@@ -94,7 +95,8 @@ pub fn decode_space_padded<const N: usize>(
     let bytes = trim_space(&v.0.bytes);
     let mut out = vec![0u8; bytes.len().saturating_mul(3).saturating_add(16)];
     let mut decoder = encoding.new_decoder_without_bom_handling();
-    let (result, _read, written) = decoder.decode_to_utf8_without_replacement(bytes, &mut out, true);
+    let (result, _read, written) =
+        decoder.decode_to_utf8_without_replacement(bytes, &mut out, true);
 
     match result {
         DecoderResult::InputEmpty => {
@@ -119,13 +121,15 @@ pub fn encode_null_padded<const N: usize>(
     // (Most legacy encodings are <= 2 bytes per scalar, but we size for up to 4.)
     let mut tmp = vec![0u8; s.len().saturating_mul(4).saturating_add(16)];
     let mut encoder = encoding.new_encoder();
-    let (result, _read, written) =
-        encoder.encode_from_utf8_without_replacement(s, &mut tmp, true);
+    let (result, _read, written) = encoder.encode_from_utf8_without_replacement(s, &mut tmp, true);
 
     match result {
         EncoderResult::InputEmpty => {
             if written > N {
-                return Err(EncodingRsError::TooManyBytes { max: N, found: written });
+                return Err(EncodingRsError::TooManyBytes {
+                    max: N,
+                    found: written,
+                });
             }
             let mut out = [0u8; N];
             out[..written].copy_from_slice(&tmp[..written]);
@@ -150,13 +154,15 @@ pub fn encode_space_padded<const N: usize>(
 ) -> Result<FixedUtf8SpacePadded<N>, EncodingRsError> {
     let mut tmp = vec![0u8; s.len().saturating_mul(4).saturating_add(16)];
     let mut encoder = encoding.new_encoder();
-    let (result, _read, written) =
-        encoder.encode_from_utf8_without_replacement(s, &mut tmp, true);
+    let (result, _read, written) = encoder.encode_from_utf8_without_replacement(s, &mut tmp, true);
 
     match result {
         EncoderResult::InputEmpty => {
             if written > N {
-                return Err(EncodingRsError::TooManyBytes { max: N, found: written });
+                return Err(EncodingRsError::TooManyBytes {
+                    max: N,
+                    found: written,
+                });
             }
             let mut out = [b' '; N];
             out[..written].copy_from_slice(&tmp[..written]);

@@ -85,17 +85,29 @@ fn parse_tuple_text_attr(attrs: &[Attribute]) -> Result<Vec<TupleTextSpec>, Erro
             ))
         })?;
 
-        let idx = idx.ok_or_else(|| Error::new(attr.span(), "#[tuple_text(...)] missing `idx = N`"))?;
+        let idx =
+            idx.ok_or_else(|| Error::new(attr.span(), "#[tuple_text(...)] missing `idx = N`"))?;
         let kind = kind.ok_or_else(|| {
             Error::new(
                 attr.span(),
                 "#[tuple_text(...)] missing encoding; expected one of: utf8 / utf16 / utf32",
             )
         })?;
-        let units = units.ok_or_else(|| Error::new(attr.span(), "#[tuple_text(...)] missing `units = N`"))?;
-        let pad = pad.ok_or_else(|| Error::new(attr.span(), "#[tuple_text(...)] missing `pad = \"null\"|\"space\"`"))?;
+        let units = units
+            .ok_or_else(|| Error::new(attr.span(), "#[tuple_text(...)] missing `units = N`"))?;
+        let pad = pad.ok_or_else(|| {
+            Error::new(
+                attr.span(),
+                "#[tuple_text(...)] missing `pad = \"null\"|\"space\"`",
+            )
+        })?;
 
-        out.push(TupleTextSpec { idx, kind, units, pad });
+        out.push(TupleTextSpec {
+            idx,
+            kind,
+            units,
+            pad,
+        });
     }
 
     // Reject duplicates.
