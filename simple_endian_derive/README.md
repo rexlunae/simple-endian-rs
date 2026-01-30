@@ -53,6 +53,7 @@ The recommended workflow in the `simple_endian` ecosystem is **native-first**:
 
 * `#[text(...)]` – fixed-size text fields (feature-gated by `simple_endian` text features)
 * `#[tuple_text]` – support for tuple enum variants in text contexts
+* `#[default]` – forwarded to `Default` when used on struct fields with `#[wire_derive(Default)]` or enum variants with `#[wire_default]`
 
 ## Important limitation: enum wire derives
 
