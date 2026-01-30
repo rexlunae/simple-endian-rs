@@ -78,7 +78,10 @@ mod endianize_packed_tests {
     #[test]
     fn unpacked_struct_wire_has_same_size_and_alignment() {
         assert_eq!(size_of::<UnpackedStruct>(), size_of::<UnpackedStructWire>());
-        assert_eq!(align_of::<UnpackedStruct>(), align_of::<UnpackedStructWire>());
+        assert_eq!(
+            align_of::<UnpackedStruct>(),
+            align_of::<UnpackedStructWire>()
+        );
     }
 
     #[repr(C, packed)]
@@ -92,8 +95,14 @@ mod endianize_packed_tests {
 
     #[test]
     fn packed_struct_with_padding_wire_size_matches_base() {
-        assert_eq!(size_of::<PackedWithPadding>(), size_of::<PackedWithPaddingWire>());
-        assert_eq!(align_of::<PackedWithPadding>(), align_of::<PackedWithPaddingWire>());
+        assert_eq!(
+            size_of::<PackedWithPadding>(),
+            size_of::<PackedWithPaddingWire>()
+        );
+        assert_eq!(
+            align_of::<PackedWithPadding>(),
+            align_of::<PackedWithPaddingWire>()
+        );
     }
 }
 
