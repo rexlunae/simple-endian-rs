@@ -1496,4 +1496,96 @@ mod tests {
         let res: std::io::Result<BigEndian<u64>> = read_specific(&mut cur);
         assert!(res.is_err());
     }
+
+    // Test helper types for try_read_native and try_write_native
+    #[derive(Debug, PartialEq, Clone, Copy)]
+    struct ValidatedU8(u8);
+
+    impl TryFrom<BigEndian<u8>> for ValidatedU8 {
+        type Error = &'static str;
+
+        fn try_from(value: BigEndian<u8>) -> Result<Self, Self::Error> {
+            let n = value.to_native();
+            if n <= 100 {
+                Ok(ValidatedU8(n))
+            } else {
+                Err("value must be <= 100")
+            }
+        }
+    }
+
+    impl TryFrom<ValidatedU8> for BigEndian<u8> {
+        type Error = &'static str;
+
+        fn try_from(value: ValidatedU8) -> Result<Self, Self::Error> {
+            if value.0 <= 100 {
+                Ok(BigEndian::from(value.0))
+            } else {
+                Err("value must be <= 100")
+            }
+        }
+    }
+
+    #[test]
+    fn try_read_native_success() {
+        // Write a valid u8 value (50, which is <= 100)
+        let val: BigEndian<u8> = 50u8.into();
+        let mut buf = Vec::new();
+        write_specific(&mut buf, &val).unwrap();
+
+        // Read it back using try_read_native
+        let mut cur = Cursor::new(buf);
+        let result: std::io::Result<ValidatedU8> =
+            try_read_native::<_, BigEndian<u8>, ValidatedU8>(&mut cur);
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ValidatedU8(50));
+    }
+
+    #[test]
+    fn try_read_native_conversion_error() {
+        // Write an invalid u8 value (150, which is > 100)
+        let val: BigEndian<u8> = 150u8.into();
+        let mut buf = Vec::new();
+        write_specific(&mut buf, &val).unwrap();
+
+        // Try to read it back using try_read_native - should fail
+        let mut cur = Cursor::new(buf);
+        let result: std::io::Result<ValidatedU8> =
+            try_read_native::<_, BigEndian<u8>, ValidatedU8>(&mut cur);
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+        assert_eq!(err.to_string(), "value must be <= 100");
+    }
+
+    #[test]
+    fn try_write_native_success() {
+        // Write a valid ValidatedU8 value (75, which is <= 100)
+        let val = ValidatedU8(75);
+        let mut buf = Vec::new();
+
+        let result = try_write_native::<_, BigEndian<u8>, ValidatedU8>(&mut buf, val);
+        assert!(result.is_ok());
+
+        // Verify the written data
+        let mut cur = Cursor::new(buf);
+        let read_val: BigEndian<u8> = read_specific(&mut cur).unwrap();
+        assert_eq!(read_val.to_native(), 75);
+    }
+
+    #[test]
+    fn try_write_native_conversion_error() {
+        // Try to write an invalid ValidatedU8 value (150, which is > 100)
+        let val = ValidatedU8(150);
+        let mut buf = Vec::new();
+
+        let result = try_write_native::<_, BigEndian<u8>, ValidatedU8>(&mut buf, val);
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+        assert_eq!(err.to_string(), "value must be <= 100");
+    }
 }
