@@ -1045,6 +1045,12 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 None
             };
 
+            if needs_default_impl && default_impl.is_none() {
+                return Err(Error::new(
+                    input.ident.span(),
+                    "enum marked with #[wire_default] must have exactly one variant marked with #[default]",
+                ));
+            }
             let wire = if let Some(default_impl) = default_impl {
                 quote!(#wire #default_impl)
             } else {
