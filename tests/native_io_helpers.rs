@@ -1,4 +1,4 @@
-#![cfg(feature = "derive")]
+#![cfg(all(feature = "derive", feature = "io-std"))]
 
 use simple_endian::{Endianize, read_native, write_native, write_native_ref, write_specific};
 
