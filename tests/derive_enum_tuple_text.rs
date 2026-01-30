@@ -1,6 +1,13 @@
-#![cfg(all(feature = "derive", feature = "io-std", feature = "text_fixed", feature = "text_utf8"))]
+#![cfg(all(
+    feature = "derive",
+    feature = "io-std",
+    feature = "text_fixed",
+    feature = "text_utf8"
+))]
 
-use simple_endian::{EndianRead, EndianWrite, Endianize, FixedUtf8NullPadded, read_specific, write_specific};
+use simple_endian::{
+    EndianRead, EndianWrite, Endianize, FixedUtf8NullPadded, read_specific, write_specific,
+};
 
 #[test]
 fn derived_enum_tuple_variant_supports_tuple_text_utf8() {

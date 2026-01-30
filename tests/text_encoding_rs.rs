@@ -1,17 +1,19 @@
 #![cfg(feature = "text_encoding_rs")]
 
-use encoding_rs::WINDOWS_1252;
 use encoding_rs::UTF_16LE;
+use encoding_rs::WINDOWS_1252;
 
 use simple_endian::encoding_rs::{
-    decode_null_padded, decode_space_padded, encode_null_padded, encode_space_padded, EncodingRsError,
+    EncodingRsError, decode_null_padded, decode_space_padded, encode_null_padded,
+    encode_space_padded,
 };
 use simple_endian::{FixedUtf8Bytes, FixedUtf8NullPadded, FixedUtf8SpacePadded};
 
 #[test]
 fn windows_1252_round_trip_null_padded() {
     // "café" in windows-1252 is: 63 61 66 e9
-    let v: FixedUtf8NullPadded<8> = FixedUtf8Bytes::from([b'c', b'a', b'f', 0xE9, 0, 0, 0, 0]).into();
+    let v: FixedUtf8NullPadded<8> =
+        FixedUtf8Bytes::from([b'c', b'a', b'f', 0xE9, 0, 0, 0, 0]).into();
 
     let s = decode_null_padded::<8>(WINDOWS_1252, &v).unwrap();
     assert_eq!(s, "café");
