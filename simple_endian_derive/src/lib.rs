@@ -35,6 +35,8 @@
 //!
 //! * `#[text(...)]` for fixed-size text fields
 //! * `#[tuple_text]` for tuple enum variants
+//! * `#[default]` to mark the default struct field (when combined with `#[wire_derive(Default)]`)
+//!   or default enum variant (when combined with `#[wire_default]`)
 //!
 //! ## Important limitation: enum wire derives
 //!
