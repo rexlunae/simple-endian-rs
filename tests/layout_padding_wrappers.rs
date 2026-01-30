@@ -48,8 +48,8 @@ mod tests {
 
 #[cfg(feature = "derive")]
 mod endianize_packed_tests {
-    use std::mem::{size_of, align_of};
     use simple_endian::Endianize;
+    use std::mem::{align_of, size_of};
 
     #[repr(C, packed)]
     #[derive(Endianize, Debug, PartialEq)]
@@ -99,8 +99,8 @@ mod endianize_packed_tests {
 
 #[cfg(feature = "derive")]
 mod endianize_mixed_types_tests {
-    use std::mem::{size_of, align_of};
     use simple_endian::Endianize;
+    use std::mem::{align_of, size_of};
 
     #[repr(C, packed)]
     #[derive(Endianize, Debug, PartialEq, Default, Clone, Copy)]
