@@ -1,6 +1,6 @@
 [package]
 name = "simple_endian"
-version = "0.4.9"
+version = "0.4.10"
 authors = ["Erica Stith <rexlunae@gmail.com>"]
 edition = "2024"
 license = "MIT"
@@ -23,7 +23,7 @@ memmap = "0.7"
 bencher = "0.1.5"
 
 [dependencies]
-simple_endian_derive = { version = "0.4.8", path = "./simple_endian_derive", optional = true }
+simple_endian_derive = { version = "0.4.10", path = "./simple_endian_derive", optional = true }
 encoding_rs = { version = "0.8", default-features = false, optional = true }
 
 

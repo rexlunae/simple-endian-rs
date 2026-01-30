@@ -24,10 +24,101 @@ The crate is designed to be lightweight and supports `#![no_std]` (derive/IO/tex
 
 If you’re using LLM-powered tooling, there’s a concise, repository-specific usage guide in `LLMs.txt`.
 
+## Native-first IO (recommended)
+
+When you enable `derive`, `#[derive(Endianize)]` generates a corresponding `*Wire` type for your struct/enum.
+
+* Use the **native type** for your application logic.
+* Use the **wire type** for IO and on-wire layout.
+
+This is especially important for enums: the generated wire type uses a `tag + union payload` layout to match the on-wire representation, and that `union` imposes restrictions on which traits can be derived.
+
+To keep everyday code ergonomic, `simple_endian` provides helpers (behind `io-std`) that read/write a wire type internally and convert at the boundary:
+
+* `read_native::<R, W, T>(reader) -> io::Result<T>` reads `W` (using `EndianRead`) and then converts with `T: From<W>`.
+* `try_read_native` is the fallible variant (`T: TryFrom<W>`) and maps conversion failures to `io::ErrorKind::InvalidData`.
+* `write_native::<Wrt, W, T>(writer, value)` converts with `W: From<T>` and writes `W` (using `EndianWrite`).
+* `write_native_ref` is a convenience wrapper for `&T` (clones and forwards to `write_native`).
+* `try_write_native` / `try_write_native_ref` are the fallible variants and map conversion failures to `io::ErrorKind`.
+
+### Under the hood
+
+These helpers are intentionally thin wrappers around the wire-level primitives:
+
+* `read_native` does: `let w: W = read_specific(reader)?; Ok(T::from(w))`
+* `write_native` does: `let w: W = W::from(t); write_specific(writer, &w)`
+
+That means IO stays defined in terms of the wire type (`W: EndianRead/EndianWrite`), while your boundary conversions use normal Rust conversions (`From`/`TryFrom`).
+
+## Nesting `#[derive(Endianize)]` types
+
+You’ll often want to build larger binary layouts out of smaller ones (headers inside packets, records inside files, etc.).
+The rule of thumb is:
+
+* **Nest native-in-native**: your application types contain other *native* types.
+* **Nest wire-in-wire**: the generated `*Wire` types contain other `*Wire` types.
+
+Avoid mixing native and wire types in the same struct unless you’re intentionally creating a boundary type.
+
+### Example
+
+```rust
+use simple_endian::Endianize;
+
+#[derive(Debug, Clone, PartialEq, Eq, Endianize)]
+#[endian(le)]
+#[repr(C)]
+struct Header {
+    magic: u32,
+    version: u16,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Endianize)]
+#[endian(le)]
+#[repr(C)]
+struct Packet {
+    header: Header,  // native-in-native
+    len: u32,
+}
+
+// The macro generates:
+// - `HeaderWire` where fields are endian-wrapped
+// - `PacketWire` that contains a `HeaderWire` in its `header` field
+//
+// IO is performed on `PacketWire` (or read/write via `read_native`/`write_native`).
+```
+
+### How the nesting works under the hood
+
+When `PacketWire` is generated, the macro sees that `Packet::header` is itself an `Endianize` type, so the wire field becomes `HeaderWire`.
+Then:
+
+* `PacketWire: EndianRead/EndianWrite` reads/writes `HeaderWire` by delegating to its `EndianRead/EndianWrite` impls.
+* Converting `PacketWire -> Packet` (where generated) converts `HeaderWire -> Header` as part of the conversion.
+
+This gives you clean composition without manual byte offsets or ad-hoc byte swapping.
+
+### Common patterns
+
+* **IO boundary (recommended):**
+  * Read: `let pkt: Packet = read_native::<_, PacketWire, Packet>(reader)?;`
+  * Write: `write_native::<_, PacketWire, Packet>(writer, pkt)?;`
+
+* **Working with wire values directly:**
+  * Useful when implementing a parser/serializer layer.
+  * Keep consumes/produces wire values at the boundary of that layer, and convert to native as soon as possible.
+
+### Gotchas
+
+* **Endianness applies recursively.** If you have a big-endian outer type that contains a little-endian inner type, model that explicitly by choosing the right wrapper for the inner field(s) or by making the inner type itself `#[endian(be/le)]` as appropriate.
+* **Layout is fixed by the wire types.** `#[repr(C)]` (or `#[repr(C, packed)]`) affects the generated `*Wire` layout. Prefer to reason about the wire layout, not the native one.
+* **Enums are special.** Enum wire types use a `tag + union payload` layout, so it’s usually best to keep enums as native types in your logic and rely on boundary conversions.
+
 
 ## No-std Support
 
 `simple_endian` works in `no_std` environments. The library automatically switches to `no_std` mode when:
+
 * You're not running tests
 * The `io-std` or `io` features are not enabled
 
@@ -39,11 +130,13 @@ simple_endian = { version = "0.4", default-features = false, features = ["intege
 ```
 
 Common feature combinations for `no_std`:
+
 * **Minimal**: `integer_impls`, `both_endian`, `byte_impls` — basic endian types
 * **With derive**: add `derive` — for `#[derive(Endianize)]` support
 * **With core IO**: add `io-core` — for slice-based read/write helpers (no `std::io` dependency)
 
 The library compiles successfully for embedded targets like `thumbv7m-none-eabi`. See `tests/no_std_compatibility.rs` for examples.
+
 ## New Text Handling
 
 New in the `0.4` release is a set of feature-gated types and conversions for handling on-disk/on-wire Unicode encodings **other than UTF-8**.

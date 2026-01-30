@@ -969,6 +969,135 @@ pub mod std_io {
         write_specific::<dyn Write, E>(writer, v)
     }
 
+    /// Read a value in its *wire* representation and convert it into a native type.
+    ///
+    /// This is the recommended ergonomic pattern for `#[derive(Endianize)]` types:
+    ///
+    /// * the generated `*Wire` type is the IO/layout type (it implements [`EndianRead`])
+    /// * your “real” type is the native type used throughout your program
+    ///
+    /// Conceptually:
+    ///
+    /// 1. read `W` from the stream (endian-correct)
+    /// 2. convert into `T` using `From<W>`
+    ///
+    /// Under the hood, this is equivalent to:
+    ///
+    /// ```ignore
+    /// let wire: W = read_specific(reader)?;
+    /// let native: T = wire.into();
+    /// ```
+    ///
+    /// ### Example
+    ///
+    /// ```ignore
+    /// use simple_endian::Endianize;
+    /// use simple_endian::read_native;
+    ///
+    /// #[derive(Endianize)]
+    /// #[endian(le)]
+    /// #[repr(C)]
+    /// struct Header {
+    ///     magic: u32,
+    ///     version: u16,
+    /// }
+    ///
+    /// // Reads `HeaderWire` and converts to `Header`.
+    /// let header: Header = read_native::<_, HeaderWire, Header>(&mut reader)?;
+    /// # Ok::<(), std::io::Error>(())
+    /// ```
+    ///
+    /// ### Notes
+    ///
+    /// * This composes naturally for nested `Endianize` types (a `PacketWire` contains a `HeaderWire`).
+    /// * For enums, the wire representation is `tag + union payload`, so you typically want to keep
+    ///   trait derives on the native enum and only convert at the boundary.
+    pub fn read_native<R, W, T>(reader: &mut R) -> io::Result<T>
+    where
+        R: Read + ?Sized,
+        W: EndianRead,
+        T: From<W>,
+    {
+        let wire: W = read_specific(reader)?;
+        Ok(wire.into())
+    }
+
+    /// Like [`read_native`], but uses `TryFrom<W>` for fallible conversion.
+    ///
+    /// Conversion errors are mapped to `io::ErrorKind::InvalidData`.
+    pub fn try_read_native<R, W, T>(reader: &mut R) -> io::Result<T>
+    where
+        R: Read + ?Sized,
+        W: EndianRead,
+        T: TryFrom<W>,
+        <T as TryFrom<W>>::Error: core::fmt::Display,
+    {
+        let wire: W = read_specific(reader)?;
+        T::try_from(wire).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))
+    }
+
+    /// Convert a native value into its *wire* representation and write it.
+    ///
+    /// This is the “mirror” of [`read_native`]: convert first, then write.
+    ///
+    /// Under the hood this is equivalent to:
+    ///
+    /// ```ignore
+    /// let wire: W = value.into();
+    /// write_specific(writer, &wire)
+    /// ```
+    pub fn write_native<Wrt, W, T>(writer: &mut Wrt, v: T) -> io::Result<()>
+    where
+        Wrt: Write + ?Sized,
+        W: EndianWrite,
+        W: From<T>,
+    {
+        let wire: W = v.into();
+        write_specific(writer, &wire)
+    }
+
+    /// Convenience wrapper over [`write_native`] when you only have a reference.
+    ///
+    /// This clones the value and forwards to [`write_native`].
+    pub fn write_native_ref<Wrt, W, T>(writer: &mut Wrt, v: &T) -> io::Result<()>
+    where
+        Wrt: Write + ?Sized,
+        W: EndianWrite,
+        T: Clone,
+        W: From<T>,
+    {
+        write_native::<Wrt, W, T>(writer, v.clone())
+    }
+
+    /// Like [`write_native`], but uses `TryFrom<T>` for fallible conversion.
+    ///
+    /// Conversion errors are mapped to `io::ErrorKind::InvalidInput`.
+    pub fn try_write_native<Wrt, W, T>(writer: &mut Wrt, v: T) -> io::Result<()>
+    where
+        Wrt: Write + ?Sized,
+        W: EndianWrite,
+        W: TryFrom<T>,
+        <W as TryFrom<T>>::Error: core::fmt::Display,
+    {
+        let wire: W = W::try_from(v)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+        write_specific(writer, &wire)
+    }
+
+    /// Convenience wrapper over [`try_write_native`] when you only have a reference.
+    ///
+    /// This clones the value and forwards to [`try_write_native`].
+    pub fn try_write_native_ref<Wrt, W, T>(writer: &mut Wrt, v: &T) -> io::Result<()>
+    where
+        Wrt: Write + ?Sized,
+        W: EndianWrite,
+        T: Clone,
+        W: TryFrom<T>,
+        <W as TryFrom<T>>::Error: core::fmt::Display,
+    {
+        try_write_native::<Wrt, W, T>(writer, v.clone())
+    }
+
     // --- Fixed UTF helpers (feature-gated) ---
 
     #[cfg(all(feature = "text_fixed", feature = "text_utf16"))]
@@ -1366,5 +1495,97 @@ mod tests {
         let mut cur = Cursor::new(vec![0u8; 3]);
         let res: std::io::Result<BigEndian<u64>> = read_specific(&mut cur);
         assert!(res.is_err());
+    }
+
+    // Test helper types for try_read_native and try_write_native
+    #[derive(Debug, PartialEq, Clone, Copy)]
+    struct ValidatedU8(u8);
+
+    impl TryFrom<BigEndian<u8>> for ValidatedU8 {
+        type Error = &'static str;
+
+        fn try_from(value: BigEndian<u8>) -> Result<Self, Self::Error> {
+            let n = value.to_native();
+            if n <= 100 {
+                Ok(ValidatedU8(n))
+            } else {
+                Err("value must be <= 100")
+            }
+        }
+    }
+
+    impl TryFrom<ValidatedU8> for BigEndian<u8> {
+        type Error = &'static str;
+
+        fn try_from(value: ValidatedU8) -> Result<Self, Self::Error> {
+            if value.0 <= 100 {
+                Ok(BigEndian::from(value.0))
+            } else {
+                Err("value must be <= 100")
+            }
+        }
+    }
+
+    #[test]
+    fn try_read_native_success() {
+        // Write a valid u8 value (50, which is <= 100)
+        let val: BigEndian<u8> = 50u8.into();
+        let mut buf = Vec::new();
+        write_specific(&mut buf, &val).unwrap();
+
+        // Read it back using try_read_native
+        let mut cur = Cursor::new(buf);
+        let result: std::io::Result<ValidatedU8> =
+            try_read_native::<_, BigEndian<u8>, ValidatedU8>(&mut cur);
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ValidatedU8(50));
+    }
+
+    #[test]
+    fn try_read_native_conversion_error() {
+        // Write an invalid u8 value (150, which is > 100)
+        let val: BigEndian<u8> = 150u8.into();
+        let mut buf = Vec::new();
+        write_specific(&mut buf, &val).unwrap();
+
+        // Try to read it back using try_read_native - should fail
+        let mut cur = Cursor::new(buf);
+        let result: std::io::Result<ValidatedU8> =
+            try_read_native::<_, BigEndian<u8>, ValidatedU8>(&mut cur);
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+        assert_eq!(err.to_string(), "value must be <= 100");
+    }
+
+    #[test]
+    fn try_write_native_success() {
+        // Write a valid ValidatedU8 value (75, which is <= 100)
+        let val = ValidatedU8(75);
+        let mut buf = Vec::new();
+
+        let result = try_write_native::<_, BigEndian<u8>, ValidatedU8>(&mut buf, val);
+        assert!(result.is_ok());
+
+        // Verify the written data
+        let mut cur = Cursor::new(buf);
+        let read_val: BigEndian<u8> = read_specific(&mut cur).unwrap();
+        assert_eq!(read_val.to_native(), 75);
+    }
+
+    #[test]
+    fn try_write_native_conversion_error() {
+        // Try to write an invalid ValidatedU8 value (150, which is > 100)
+        let val = ValidatedU8(150);
+        let mut buf = Vec::new();
+
+        let result = try_write_native::<_, BigEndian<u8>, ValidatedU8>(&mut buf, val);
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+        assert_eq!(err.to_string(), "value must be <= 100");
     }
 }
