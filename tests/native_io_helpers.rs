@@ -91,11 +91,10 @@ fn try_write_native_success() {
     // Test successful conversion: u32 value fits in u16
     let value: u32 = 0x1234;
     let mut buf = Vec::new();
-    
+
     // Try to write as ValidatedU16 using TryFrom
-    simple_endian::try_write_native::<_, ValidatedU16, u32>(&mut buf, value)
-        .unwrap();
-    
+    simple_endian::try_write_native::<_, ValidatedU16, u32>(&mut buf, value).unwrap();
+
     // Verify by reading back
     let read_back: simple_endian::BigEndian<u16> =
         simple_endian::read_specific(&mut &buf[..]).unwrap();
@@ -107,16 +106,13 @@ fn try_write_native_failure() {
     // Test failed conversion: value that cannot fit in u16
     let value: u32 = 0x12345678; // Exceeds u16::MAX
     let mut buf = Vec::new();
-    
+
     // Try to write - this should fail
-    let result = simple_endian::try_write_native::<_, ValidatedU16, u32>(
-        &mut buf,
-        value,
-    );
-    
+    let result = simple_endian::try_write_native::<_, ValidatedU16, u32>(&mut buf, value);
+
     // Should return an error
     assert!(result.is_err());
-    
+
     // Error should be InvalidInput
     if let Err(e) = result {
         assert_eq!(e.kind(), std::io::ErrorKind::InvalidInput);
@@ -128,13 +124,9 @@ fn try_write_native_ref_success() {
     // Test successful conversion with reference
     let value: u32 = 0xABCD;
     let mut buf = Vec::new();
-    
-    simple_endian::try_write_native_ref::<_, ValidatedU16, u32>(
-        &mut buf,
-        &value,
-    )
-    .unwrap();
-    
+
+    simple_endian::try_write_native_ref::<_, ValidatedU16, u32>(&mut buf, &value).unwrap();
+
     // Verify by reading back
     let read_back: simple_endian::BigEndian<u16> =
         simple_endian::read_specific(&mut &buf[..]).unwrap();
@@ -146,15 +138,12 @@ fn try_write_native_ref_failure() {
     // Test failed conversion with reference
     let value: u32 = 0xFFFF_FFFF; // Way beyond u16::MAX
     let mut buf = Vec::new();
-    
-    let result = simple_endian::try_write_native_ref::<_, ValidatedU16, u32>(
-        &mut buf,
-        &value,
-    );
-    
+
+    let result = simple_endian::try_write_native_ref::<_, ValidatedU16, u32>(&mut buf, &value);
+
     // Should return an error
     assert!(result.is_err());
-    
+
     // Error should be InvalidInput
     if let Err(e) = result {
         assert_eq!(e.kind(), std::io::ErrorKind::InvalidInput);
