@@ -1,5 +1,7 @@
 // Derived wire types must compile and convert without `io-std` (no `std::io`).
 #![cfg(all(feature = "derive", not(feature = "io-std")))]
+// A true no_std crate: any `::std` path left in generated code fails to resolve.
+#![no_std]
 
 use simple_endian::Endianize;
 

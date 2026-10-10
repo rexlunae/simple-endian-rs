@@ -38,6 +38,8 @@ jobs:
         run: cargo check --target thumbv7m-none-eabi --no-default-features --features "integer_impls,both_endian,byte_impls,derive"
       - name: Run no-std compatibility test
         run: cargo test --test no_std_compatibility --no-default-features --features "integer_impls,both_endian,byte_impls"
+      - name: Run derive no-std test (derive without io-std)
+        run: cargo test --test derive_no_std --no-default-features --features "integer_impls,both_endian,byte_impls,derive"
 
   clippy:
     name: Clippy
