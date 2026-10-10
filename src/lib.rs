@@ -185,6 +185,24 @@ pub use shorthand_types_nonzero::*;
 #[cfg(feature = "derive")]
 pub use simple_endian_derive::Endianize;
 
+/// Implementation detail of `#[derive(Endianize)]`: expands to its input when the
+/// `io-std` feature is enabled and to nothing otherwise, so derived wire types still
+/// compile in `no_std` builds (the generated `EndianRead`/`EndianWrite` impls need
+/// `std::io`). The cfg is evaluated here, in this crate, not in the user's crate.
+#[cfg(feature = "io-std")]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __endianize_io {
+    ($($t:tt)*) => { $($t)* };
+}
+
+#[cfg(not(feature = "io-std"))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __endianize_io {
+    ($($t:tt)*) => {};
+}
+
 /// Optional IO helpers gated by the `io` feature.
 #[cfg(any(feature = "io-core", feature = "io-std"))]
 mod io;
