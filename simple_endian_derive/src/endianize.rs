@@ -791,7 +791,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                             }
                         });
 
-                        payload_union_fields.push(quote!(#v_payload_union_field: ::std::mem::ManuallyDrop<#v_payload_struct #ty_generics>));
+                        payload_union_fields.push(quote!(#v_payload_union_field: ::core::mem::ManuallyDrop<#v_payload_struct #ty_generics>));
 
                         // Read arm: read payload struct, store in union.
                         variant_arms_read.push(quote! {
@@ -799,7 +799,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                                 let payload = #v_payload_struct { #(#reads,)* };
                                 Ok(#wire_name {
                                     tag: #v_tag_const.into(),
-                                    payload: #payload_name { #v_payload_union_field: ::std::mem::ManuallyDrop::new(payload) },
+                                    payload: #payload_name { #v_payload_union_field: ::core::mem::ManuallyDrop::new(payload) },
                                 })
                             }
                         });
@@ -932,14 +932,14 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                             #vis struct #v_payload_struct #generics( #(pub #field_tys,)* );
                         });
 
-                        payload_union_fields.push(quote!(#v_payload_union_field: ::std::mem::ManuallyDrop<#v_payload_struct #ty_generics>));
+                        payload_union_fields.push(quote!(#v_payload_union_field: ::core::mem::ManuallyDrop<#v_payload_struct #ty_generics>));
 
                         variant_arms_read.push(quote! {
                             x if x == #v_tag_const => {
                                 let payload = #v_payload_struct( #(#reads,)* );
                                 Ok(#wire_name {
                                     tag: #v_tag_const.into(),
-                                    payload: #payload_name { #v_payload_union_field: ::std::mem::ManuallyDrop::new(payload) },
+                                    payload: #payload_name { #v_payload_union_field: ::core::mem::ManuallyDrop::new(payload) },
                                 })
                             }
                         });
@@ -997,6 +997,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                 #manual_eq_impls
                 #manual_debug_impl
 
+                ::simple_endian::__endianize_io! {
                 impl #impl_generics ::simple_endian::EndianRead for #wire_name #ty_generics #where_clause {
                     fn read_from<R: ::std::io::Read + ?Sized>(reader: &mut R) -> ::std::io::Result<Self> {
                         let tag: #tag_ty = ::simple_endian::read_specific(reader)?;
@@ -1025,6 +1026,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                             )),
                         }
                     }
+                }
                 }
             };
 
@@ -1119,6 +1121,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
         });
 
         quote! {
+          ::simple_endian::__endianize_io! {
             impl #impl_generics ::simple_endian::EndianRead for #wire_name #ty_generics #where_clause {
                 fn read_from<R: ::std::io::Read + ?Sized>(reader: &mut R) -> ::std::io::Result<Self> {
                     Ok(Self { #(#reads,)* })
@@ -1131,6 +1134,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                     Ok(())
                 }
             }
+          }
         }
     } else if !wire_field_indices.is_empty() && !is_union {
         let tuple_reads = wire_field_indices
@@ -1149,6 +1153,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
 
         // Tuple structs: same story, but with positional fields.
         quote! {
+          ::simple_endian::__endianize_io! {
             impl #impl_generics ::simple_endian::EndianRead for #wire_name #ty_generics #where_clause {
                 fn read_from<R: ::std::io::Read + ?Sized>(reader: &mut R) -> ::std::io::Result<Self> {
                     Ok(Self( #(#tuple_reads,)* ))
@@ -1161,6 +1166,7 @@ fn derive_endianize_inner(input: &DeriveInput) -> Result<TokenStream, Error> {
                     Ok(())
                 }
             }
+          }
         }
     } else {
         // Unit structs or unions (no safe/default IO impls).
