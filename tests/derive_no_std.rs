@@ -16,7 +16,11 @@ struct Hdr {
 
 #[test]
 fn derive_without_io_std() {
-    let w = HdrWire::from(Hdr { a: 1, b: 0x0203, c: 0x0405_0607 });
+    let w = HdrWire::from(Hdr {
+        a: 1,
+        b: 0x0203,
+        c: 0x0405_0607,
+    });
     assert_eq!(core::mem::size_of::<HdrWire>(), 7);
     let n = Hdr::from(w);
     let (a, b, c) = (n.a, n.b, n.c);
